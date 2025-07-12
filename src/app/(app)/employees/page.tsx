@@ -1,4 +1,3 @@
-import { employees } from "./data";
 import { EmployeeTable } from "./_components/employee-table";
 
 export default function EmployeesPage() {
@@ -10,7 +9,7 @@ export default function EmployeesPage() {
           Manage your team members and their information.
         </p>
       </header>
-      <EmployeeTable data={employees} />
+      <EmployeeTable />
     </div>
   );
 }

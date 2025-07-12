@@ -20,9 +20,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { toast } from "@/hooks/use-toast";
+import type { Employee } from "@/lib/types";
+import React from "react";
 
 const formSchema = z.object({
+  id: z.string().optional(),
   name: z.string().min(2, "Name must be at least 2 characters."),
   employeeId: z.string().min(1, "Employee ID is required."),
   jobTitle: z.string().min(2, "Job title is required."),
@@ -34,10 +36,30 @@ const formSchema = z.object({
 
 type EmployeeFormValues = z.infer<typeof formSchema>;
 
-export function EmployeeForm({ setDialogOpen }: { setDialogOpen: (open: boolean) => void }) {
+interface EmployeeFormProps {
+    setDialogOpen: (open: boolean) => void;
+    onSubmit: (values: Employee) => void;
+    employee?: Employee | null;
+}
+
+export function EmployeeForm({ setDialogOpen, onSubmit, employee }: EmployeeFormProps) {
   const form = useForm<EmployeeFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      id: employee?.id || "",
+      name: employee?.name || "",
+      employeeId: employee?.id || "",
+      jobTitle: employee?.jobTitle || "",
+      employmentType: employee?.employmentType || "Monthly Salary",
+      salary: employee?.salary || 0,
+      bankName: employee?.bankName || "",
+      accountNumber: employee?.accountNumber || "",
+    },
+  });
+
+  React.useEffect(() => {
+    form.reset(employee ? { ...employee, employeeId: employee.id } : {
+      id: "",
       name: "",
       employeeId: "",
       jobTitle: "",
@@ -45,21 +67,24 @@ export function EmployeeForm({ setDialogOpen }: { setDialogOpen: (open: boolean)
       salary: 0,
       bankName: "",
       accountNumber: "",
-    },
-  });
-
-  function onSubmit(values: EmployeeFormValues) {
-    console.log(values);
-    toast({
-      title: "Employee Added",
-      description: `${values.name} has been successfully added to the system.`,
     });
-    setDialogOpen(false);
-  }
+  }, [employee, form]);
+
+  const handleSubmit = (values: EmployeeFormValues) => {
+    onSubmit({
+      id: employee?.id || '', // Keep original ID for editing
+      name: values.name,
+      jobTitle: values.jobTitle,
+      employmentType: values.employmentType,
+      salary: values.salary,
+      bankName: values.bankName,
+      accountNumber: values.accountNumber,
+    });
+  };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
@@ -81,7 +106,7 @@ export function EmployeeForm({ setDialogOpen }: { setDialogOpen: (open: boolean)
               <FormItem>
                 <FormLabel>Employee ID</FormLabel>
                 <FormControl>
-                  <Input placeholder="EMP007" {...field} />
+                  <Input placeholder="EMP007" {...field} disabled={!!employee} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -170,7 +195,7 @@ export function EmployeeForm({ setDialogOpen }: { setDialogOpen: (open: boolean)
         </div>
         <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button type="submit">Add Employee</Button>
+            <Button type="submit">{employee ? 'Save Changes' : 'Add Employee'}</Button>
         </div>
       </form>
     </Form>

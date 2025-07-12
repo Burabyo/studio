@@ -26,27 +26,89 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { EmployeeForm } from "./employee-form";
 import { Badge } from "@/components/ui/badge";
+import { employees as initialEmployees } from "../data";
+import { toast } from "@/hooks/use-toast";
 
-export function EmployeeTable({ data }: { data: Employee[] }) {
+export function EmployeeTable() {
+  const [employees, setEmployees] = React.useState<Employee[]>(initialEmployees);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [selectedEmployee, setSelectedEmployee] = React.useState<Employee | null>(null);
+
+  const handleAddEmployee = (employee: Employee) => {
+    setEmployees([...employees, { ...employee, id: `EMP${(employees.length + 1).toString().padStart(3, '0')}` }]);
+    toast({
+      title: "Employee Added",
+      description: `${employee.name} has been successfully added.`,
+    });
+    setIsDialogOpen(false);
+  };
+  
+  const handleEditEmployee = (employee: Employee) => {
+    setEmployees(employees.map(e => e.id === employee.id ? employee : e));
+    toast({
+        title: "Employee Updated",
+        description: `${employee.name}'s details have been updated.`,
+    });
+    setIsDialogOpen(false);
+    setSelectedEmployee(null);
+  };
+
+  const handleDeleteEmployee = (employeeId: string) => {
+    setEmployees(employees.filter(e => e.id !== employeeId));
+     toast({
+      title: "Employee Deleted",
+      description: `Employee has been removed from the system.`,
+      variant: "destructive"
+    });
+  };
+
+  const openEditDialog = (employee: Employee) => {
+    setSelectedEmployee(employee);
+    setIsDialogOpen(true);
+  };
+
+  const openNewDialog = () => {
+    setSelectedEmployee(null);
+    setIsDialogOpen(true);
+  }
 
   return (
     <>
     <div className="flex justify-end">
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={(isOpen) => {
+          setIsDialogOpen(isOpen);
+          if (!isOpen) {
+            setSelectedEmployee(null);
+          }
+        }}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={openNewDialog}>
               <PlusCircle className="mr-2 h-4 w-4" />
               Add Employee
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[625px]">
             <DialogHeader>
-              <DialogTitle>Add New Employee</DialogTitle>
+              <DialogTitle>{selectedEmployee ? 'Edit Employee' : 'Add New Employee'}</DialogTitle>
             </DialogHeader>
-            <EmployeeForm setDialogOpen={setIsDialogOpen} />
+            <EmployeeForm 
+              setDialogOpen={setIsDialogOpen}
+              onSubmit={selectedEmployee ? handleEditEmployee : handleAddEmployee}
+              employee={selectedEmployee}
+            />
           </DialogContent>
         </Dialog>
       </div>
@@ -64,7 +126,7 @@ export function EmployeeTable({ data }: { data: Employee[] }) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.map((employee) => (
+            {employees.map((employee) => (
               <TableRow key={employee.id}>
                 <TableCell className="font-medium">{employee.id}</TableCell>
                 <TableCell>{employee.name}</TableCell>
@@ -88,14 +150,32 @@ export function EmployeeTable({ data }: { data: Employee[] }) {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => openEditDialog(employee)}>
                         <Pencil className="mr-2 h-4 w-4" />
                         Edit
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive focus:text-destructive">
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
+                       <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                            </DropdownMenuItem>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete the employee record.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDeleteEmployee(employee.id)}>
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
