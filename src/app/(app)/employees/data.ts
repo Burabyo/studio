@@ -1,0 +1,58 @@
+import type { Employee } from "@/lib/types";
+
+export const employees: Employee[] = [
+    {
+      id: "EMP001",
+      name: "Alice Johnson",
+      jobTitle: "Software Engineer",
+      employmentType: "Monthly Salary",
+      bankName: "Equity Bank",
+      accountNumber: "1234567890",
+      salary: 75000,
+    },
+    {
+      id: "EMP002",
+      name: "Bob Williams",
+      jobTitle: "Project Manager",
+      employmentType: "Monthly Salary",
+      bankName: "Bank of Kigali",
+      accountNumber: "0987654321",
+      salary: 90000,
+    },
+    {
+      id: "EMP003",
+      name: "Charlie Brown",
+      jobTitle: "UX Designer",
+      employmentType: "Daily Wages",
+      bankName: "KCB Bank",
+      accountNumber: "1122334455",
+      salary: 300,
+    },
+    {
+      id: "EMP004",
+      name: "Diana Miller",
+      jobTitle: "Marketing Specialist",
+      employmentType: "Monthly Salary",
+      bankName: "Equity Bank",
+      accountNumber: "6677889900",
+      salary: 65000,
+    },
+    {
+      id: "EMP005",
+      name: "Ethan Davis",
+      jobTitle: "Data Analyst",
+      employmentType: "Monthly Salary",
+      bankName: "Bank of Kigali",
+      accountNumber: "5544332211",
+      salary: 70000,
+    },
+     {
+      id: "EMP006",
+      name: "Fiona Clark",
+      jobTitle: "Graphic Designer",
+      employmentType: "Daily Wages",
+      bankName: "KCB Bank",
+      accountNumber: "9876543210",
+      salary: 250,
+    },
+];
