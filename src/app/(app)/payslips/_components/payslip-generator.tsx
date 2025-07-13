@@ -1,95 +1,101 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { z } from "zod";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Loader2, PlusCircle, Trash2, Sparkles, FileText } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Loader2, Sparkles, FileText, ChevronsUpDown } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { generatePayslip } from "@/ai/flows/generate-payslip";
 import { toast } from "@/hooks/use-toast";
+import { employees as initialEmployees } from "../../employees/data";
+import { transactions as initialTransactions } from "../../payroll/data";
+import type { Employee, Transaction } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 const payslipSchema = z.object({
-  employeeName: z.string().min(1, "Employee name is required"),
-  employeeId: z.string().min(1, "Employee ID is required"),
-  jobTitle: z.string().min(1, "Job title is required"),
-  payPeriod: z.string().min(1, "Pay period is required"),
-  grossPay: z.coerce.number().positive("Gross pay must be positive"),
-  allowances: z.array(z.object({ name: z.string().min(1), amount: z.coerce.number().min(0) })).default([]),
-  deductions: z.array(z.object({ name: z.string().min(1), amount: z.coerce.number().min(0) })).default([]),
-  taxes: z.coerce.number().min(0, "Taxes cannot be negative"),
-  bankName: z.string().min(1, "Bank name is required"),
-  accountNumber: z.string().min(1, "Account number is required"),
-  recurringContributions: z.array(z.object({ name: z.string().min(1), amount: z.coerce.number().min(0) })).default([]),
-}).refine(data => {
-    const totalAllowances = data.allowances.reduce((sum, item) => sum + item.amount, 0);
-    const totalDeductions = data.deductions.reduce((sum, item) => sum + item.amount, 0);
-    const totalContributions = data.recurringContributions.reduce((sum, item) => sum + item.amount, 0);
-    return data.grossPay + totalAllowances - totalDeductions - totalContributions - data.taxes >= 0;
-}, {
-    message: "Net pay cannot be negative.",
-    path: ["grossPay"],
+  employeeId: z.string({ required_error: "Please select an employee." }),
 });
-
 
 type PayslipFormValues = z.infer<typeof payslipSchema>;
 
 export function PayslipGenerator() {
   const [isLoading, setIsLoading] = useState(false);
   const [generatedPayslip, setGeneratedPayslip] = useState<string | null>(null);
+  const [employees] = useState<Employee[]>(initialEmployees);
+  const [transactions] = useState<Transaction[]>(initialTransactions);
 
   const form = useForm<PayslipFormValues>({
     resolver: zodResolver(payslipSchema),
-    defaultValues: {
-      employeeName: "Alice Johnson",
-      employeeId: "EMP001",
-      jobTitle: "Software Engineer",
-      payPeriod: "June 2024",
-      grossPay: 75000,
-      taxes: 15000,
-      bankName: "Equity Bank",
-      accountNumber: "1234567890",
-      allowances: [{ name: "Housing", amount: 5000 }, { name: "Transport", amount: 2000 }],
-      deductions: [{ name: "Loan Repayment", amount: 10000 }],
-      recurringContributions: [{ name: "Pension Fund", amount: 3000 }],
-    },
   });
-
-  const { fields: allowances, append: appendAllowance, remove: removeAllowance } = useFieldArray({ control: form.control, name: "allowances" });
-  const { fields: deductions, append: appendDeduction, remove: removeDeduction } = useFieldArray({ control: form.control, name: "deductions" });
-  const { fields: contributions, append: appendContribution, remove: removeContribution } = useFieldArray({ control: form.control, name: "recurringContributions" });
 
   async function onSubmit(data: PayslipFormValues) {
     setIsLoading(true);
     setGeneratedPayslip(null);
+
+    const employee = employees.find(e => e.id === data.employeeId);
+    if (!employee) {
+        toast({
+            variant: "destructive",
+            title: "Employee not found",
+            description: "Could not find the selected employee's details.",
+        });
+        setIsLoading(false);
+        return;
+    }
+
     try {
-        const totalAllowances = data.allowances.reduce((sum, item) => sum + item.amount, 0);
-        const totalDeductions = data.deductions.reduce((sum, item) => sum + item.amount, 0);
-        const totalContributions = data.recurringContributions.reduce((sum, item) => sum + item.amount, 0);
-        const netPay = data.grossPay + totalAllowances - totalDeductions - data.taxes - totalContributions;
+        const currentMonth = new Date().getMonth();
+        const currentYear = new Date().getUTCFullYear();
+        const employeeTransactions = transactions.filter(t => 
+            t.employeeId === employee.id && 
+            new Date(t.date).getMonth() === currentMonth &&
+            new Date(t.date).getFullYear() === currentYear &&
+            t.status === 'Approved' || t.status === 'Paid'
+        );
+
+        const allowances = employeeTransactions.filter(t => t.type === 'Bonus').reduce((acc, t) => ({...acc, [t.description]: t.amount}), {});
+        const deductions = employeeTransactions.filter(t => t.type === 'Deduction' || t.type === 'Loan' || t.type === 'Advance').reduce((acc, t) => ({...acc, [t.description]: t.amount}), {});
+        
+        // Let's assume some defaults for now
+        const taxes = employee.salary * 0.2; 
+        const recurringContributions = { "Pension Fund": employee.salary * 0.05 };
+
+        const totalAllowances = Object.values(allowances).reduce((sum: number, amount) => sum + (amount as number), 0);
+        const totalDeductions = Object.values(deductions).reduce((sum: number, amount) => sum + (amount as number), 0);
+        const totalContributions = Object.values(recurringContributions).reduce((sum, amount) => sum + amount, 0);
+
+        const netPay = employee.salary + totalAllowances - totalDeductions - taxes - totalContributions;
 
         const input = {
-            ...data,
-            allowances: data.allowances.reduce((obj, item) => ({...obj, [item.name]: item.amount}), {}),
-            deductions: data.deductions.reduce((obj, item) => ({...obj, [item.name]: item.amount}), {}),
-            recurringContributions: data.recurringContributions.reduce((obj, item) => ({...obj, [item.name]: item.amount}), {}),
-            netPay: netPay
+            employeeName: employee.name,
+            employeeId: employee.id,
+            jobTitle: employee.jobTitle,
+            payPeriod: new Date().toLocaleString('default', { month: 'long', year: 'numeric' }),
+            grossPay: employee.salary,
+            allowances,
+            deductions,
+            taxes,
+            recurringContributions,
+            netPay,
+            bankName: employee.bankName,
+            accountNumber: employee.accountNumber,
         }
 
         const result = await generatePayslip(input);
         setGeneratedPayslip(result.payslip);
+
     } catch (error) {
       console.error("Error generating payslip:", error);
       toast({
@@ -106,46 +112,67 @@ export function PayslipGenerator() {
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
       <Card>
         <CardHeader>
-          <CardTitle>Payslip Details</CardTitle>
+          <CardTitle>Select Employee</CardTitle>
+          <CardDescription>
+            Choose an employee to generate a payslip based on their salary and recorded transactions for the current month.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField control={form.control} name="employeeName" render={({ field }) => <FormItem><FormLabel>Employee Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
-                <FormField control={form.control} name="employeeId" render={({ field }) => <FormItem><FormLabel>Employee ID</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
-                <FormField control={form.control} name="jobTitle" render={({ field }) => <FormItem><FormLabel>Job Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
-                <FormField control={form.control} name="payPeriod" render={({ field }) => <FormItem><FormLabel>Pay Period</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
-                <FormField control={form.control} name="grossPay" render={({ field }) => <FormItem><FormLabel>Gross Pay ($)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>} />
-                <FormField control={form.control} name="taxes" render={({ field }) => <FormItem><FormLabel>Taxes ($)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>} />
-                <FormField control={form.control} name="bankName" render={({ field }) => <FormItem><FormLabel>Bank Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
-                <FormField control={form.control} name="accountNumber" render={({ field }) => <FormItem><FormLabel>Account Number</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
-              </div>
-              
-              <Separator/>
-              
-              <div>
-                <h3 className="text-lg font-medium mb-2">Allowances</h3>
-                {allowances.map((field, index) => (<div key={field.id} className="flex gap-2 mb-2 items-center"><Input {...form.register(`allowances.${index}.name`)} placeholder="Name" /><Input type="number" {...form.register(`allowances.${index}.amount`)} placeholder="Amount" /><Button type="button" variant="ghost" size="icon" onClick={() => removeAllowance(index)}><Trash2 className="h-4 w-4"/></Button></div>))}
-                <Button type="button" variant="outline" size="sm" onClick={() => appendAllowance({name: '', amount: 0})}><PlusCircle className="mr-2 h-4 w-4"/>Add Allowance</Button>
-              </div>
-
-              <Separator/>
-
-              <div>
-                <h3 className="text-lg font-medium mb-2">Deductions</h3>
-                {deductions.map((field, index) => (<div key={field.id} className="flex gap-2 mb-2 items-center"><Input {...form.register(`deductions.${index}.name`)} placeholder="Name" /><Input type="number" {...form.register(`deductions.${index}.amount`)} placeholder="Amount" /><Button type="button" variant="ghost" size="icon" onClick={() => removeDeduction(index)}><Trash2 className="h-4 w-4"/></Button></div>))}
-                <Button type="button" variant="outline" size="sm" onClick={() => appendDeduction({name: '', amount: 0})}><PlusCircle className="mr-2 h-4 w-4"/>Add Deduction</Button>
-              </div>
-
-              <Separator/>
-
-              <div>
-                <h3 className="text-lg font-medium mb-2">Recurring Contributions</h3>
-                {contributions.map((field, index) => (<div key={field.id} className="flex gap-2 mb-2 items-center"><Input {...form.register(`recurringContributions.${index}.name`)} placeholder="Name" /><Input type="number" {...form.register(`recurringContributions.${index}.amount`)} placeholder="Amount" /><Button type="button" variant="ghost" size="icon" onClick={() => removeContribution(index)}><Trash2 className="h-4 w-4"/></Button></div>))}
-                <Button type="button" variant="outline" size="sm" onClick={() => appendContribution({name: '', amount: 0})}><PlusCircle className="mr-2 h-4 w-4"/>Add Contribution</Button>
-              </div>
-
+                <FormField
+                    control={form.control}
+                    name="employeeId"
+                    render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                        <FormLabel>Employee</FormLabel>
+                        <Popover>
+                        <PopoverTrigger asChild>
+                            <FormControl>
+                            <Button
+                                variant="outline"
+                                role="combobox"
+                                className={cn(
+                                "w-full justify-between",
+                                !field.value && "text-muted-foreground"
+                                )}
+                            >
+                                {field.value
+                                ? employees.find(
+                                    (employee) => employee.id === field.value
+                                    )?.name
+                                : "Select employee"}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                            </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                            <Command>
+                            <CommandInput placeholder="Search employee..." />
+                            <CommandList>
+                                <CommandEmpty>No employee found.</CommandEmpty>
+                                <CommandGroup>
+                                {employees.map((employee) => (
+                                    <CommandItem
+                                    value={employee.name}
+                                    key={employee.id}
+                                    onSelect={() => {
+                                        form.setValue("employeeId", employee.id)
+                                    }}
+                                    >
+                                    {employee.name}
+                                    </CommandItem>
+                                ))}
+                                </CommandGroup>
+                            </CommandList>
+                            </Command>
+                        </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+             
               <Button type="submit" disabled={isLoading} className="w-full">
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
                 Generate with AI
@@ -177,9 +204,9 @@ export function PayslipGenerator() {
           )}
            {!isLoading && !generatedPayslip && (
             <div className="flex flex-col items-center justify-center h-full text-center">
-              <Sparkles className="h-16 w-16 text-muted" />
+              <FileText className="h-16 w-16 text-muted" />
               <p className="mt-4 text-muted-foreground">Your generated payslip will appear here.</p>
-              <p className="text-sm text-muted-foreground">Fill out the form and click "Generate with AI".</p>
+              <p className="text-sm text-muted-foreground">Select an employee and click "Generate with AI".</p>
             </div>
           )}
         </CardContent>
