@@ -3,7 +3,6 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth, UserRole } from "@/context/auth-context";
 import { useRouter } from "next/navigation";
 import { PaypulseIcon } from "@/components/icons";
@@ -70,8 +69,8 @@ export default function LoginPage() {
               </p>
           </div>
       </div>
-       <div className="flex items-center justify-center p-6 sm:p-12">
-            <div className="w-full max-w-lg">
+       <div className="flex items-center justify-center p-6 sm:p-12 bg-background">
+            <div className="w-full max-w-xl">
                 <div className="lg:hidden grid gap-2 text-center mb-8">
                     <PaypulseIcon className="w-16 h-16 text-primary mb-4 mx-auto" />
                     <h1 className="text-3xl font-bold tracking-tight">Welcome to PayPulse</h1>
@@ -82,13 +81,12 @@ export default function LoginPage() {
                         <TabsTrigger value="signup">Sign Up</TabsTrigger>
                     </TabsList>
                     <TabsContent value="login">
-                        <Card className="border-none shadow-none">
-                        <form onSubmit={handleLogin}>
-                            <CardHeader className="text-center px-0">
-                                <CardTitle className="text-2xl">Login to your account</CardTitle>
-                                <CardDescription>Enter your credentials to access your dashboard.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="grid gap-4 px-0">
+                        <form onSubmit={handleLogin} className="space-y-6 pt-6">
+                            <div className="text-center">
+                                <h2 className="text-2xl font-bold tracking-tight">Login to your account</h2>
+                                <p className="text-muted-foreground">Enter your credentials to access your dashboard.</p>
+                            </div>
+                            <div className="grid gap-4">
                             <div className="grid gap-2">
                                 <Label htmlFor="login-email">Email</Label>
                                 <Input id="login-email" type="email" placeholder="m@example.com" required value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} />
@@ -114,24 +112,20 @@ export default function LoginPage() {
                                     </Button>
                                 </div>
                             </div>
-                            </CardContent>
-                            <CardFooter className="px-0">
+                            </div>
                             <Button type="submit" className="w-full" disabled={loading}>
                                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Sign In
                             </Button>
-                            </CardFooter>
                         </form>
-                        </Card>
                     </TabsContent>
                     <TabsContent value="signup">
-                        <Card className="border-none shadow-none">
-                        <form onSubmit={handleSignup}>
-                            <CardHeader className="text-center px-0">
-                                <CardTitle className="text-2xl">Create an account</CardTitle>
-                                <CardDescription>Get started with PayPulse in seconds.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="grid gap-4 px-0">
+                        <form onSubmit={handleSignup} className="space-y-6 pt-6">
+                            <div className="text-center">
+                                <h2 className="text-2xl font-bold tracking-tight">Create an account</h2>
+                                <p className="text-muted-foreground">Get started with PayPulse in seconds.</p>
+                            </div>
+                            <div className="grid gap-4">
                                 <div className="grid gap-2">
                                     <Label htmlFor="signup-name">Full Name</Label>
                                     <Input id="signup-name" type="text" placeholder="John Doe" required value={signupName} onChange={(e) => setSignupName(e.target.value)}/>
@@ -203,15 +197,12 @@ export default function LoginPage() {
                                     </div>
                                     </RadioGroup>
                                 </div>
-                            </CardContent>
-                            <CardFooter className="px-0">
-                                <Button type="submit" className="w-full" disabled={loading}>
-                                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Create Account
-                                </Button>
-                            </CardFooter>
+                            </div>
+                             <Button type="submit" className="w-full" disabled={loading}>
+                                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Create Account
+                            </Button>
                         </form>
-                        </Card>
                     </TabsContent>
                 </Tabs>
             </div>
