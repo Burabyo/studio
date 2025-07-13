@@ -44,14 +44,19 @@ export function PayslipGenerator() {
 
   const form = useForm<PayslipFormValues>({
     resolver: zodResolver(payslipSchema),
+    defaultValues: {
+        employeeId: ""
+    }
   });
+
+  const selectedEmployeeId = form.watch('employeeId');
   
   const availableEmployees = user?.role === 'employee' ? employees.filter(e => e.id === user.employeeId) : employees;
 
   useEffect(() => {
     // If user is an employee, auto-select them.
     if (user?.role === 'employee' && user.employeeId) {
-        form.setValue('employeeId', user.employeeId);
+        form.setValue('employeeId', user.employeeId, { shouldValidate: true });
     }
   }, [user, form]);
 
@@ -202,7 +207,7 @@ export function PayslipGenerator() {
                                     value={employee.name}
                                     key={employee.id}
                                     onSelect={() => {
-                                        form.setValue("employeeId", employee.id)
+                                        form.setValue("employeeId", employee.id, { shouldValidate: true })
                                     }}
                                     >
                                     {employee.name}
@@ -218,7 +223,7 @@ export function PayslipGenerator() {
                     )}
                 />
              
-              <Button type="submit" disabled={isLoading || !form.getValues('employeeId')} className="w-full">
+              <Button type="submit" disabled={isLoading || !selectedEmployeeId} className="w-full">
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
                 Generate with AI
               </Button>
@@ -265,3 +270,5 @@ export function PayslipGenerator() {
     </div>
   );
 }
+
+    
