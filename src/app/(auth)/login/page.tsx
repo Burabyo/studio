@@ -33,7 +33,8 @@ export default function LoginPage() {
       router.push('/dashboard');
       toast({ title: "Login Successful", description: "Welcome back!" });
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Login Failed", description: error.message });
+      const errorMessage = error.code ? error.code.replace('auth/', '').replace(/-/g, ' ') : 'An unknown error occurred.';
+      toast({ variant: "destructive", title: "Login Failed", description: `Error: ${errorMessage}` });
     }
   };
   
@@ -44,17 +45,19 @@ export default function LoginPage() {
       router.push('/dashboard');
       toast({ title: "Account Created", description: "Welcome to PayPulse!" });
     } catch (error: any) {
-       toast({ variant: "destructive", title: "Sign-up Failed", description: error.message });
+       // Firebase provides more specific error codes. Let's display them.
+       const errorMessage = error.code ? error.code.replace('auth/', '').replace(/-/g, ' ') : 'An unknown error occurred.';
+       toast({ variant: "destructive", title: "Sign-up Failed", description: `Error: ${errorMessage}. Please check your details.` });
     }
   };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background p-4">
        <div className="flex flex-col items-center text-center w-full">
-            <PaypulseIcon className="w-16 h-16 mb-6 text-primary"/>
-            <h1 className="text-4xl font-bold tracking-tight">Welcome to PayPulse</h1>
-            <p className="text-lg text-muted-foreground mt-2 mb-8">Securely manage your payroll.</p>
-            <Tabs defaultValue="login" className="w-full max-w-md">
+            <PaypulseIcon className="w-24 h-24 mb-6 text-primary"/>
+            <h1 className="text-5xl font-bold tracking-tight">Welcome to PayPulse</h1>
+            <p className="text-xl text-muted-foreground mt-2 mb-8 max-w-md">The simple, secure way to manage your company's payroll.</p>
+            <Tabs defaultValue="login" className="w-full max-w-lg">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="login">Login</TabsTrigger>
                 <TabsTrigger value="signup">Sign Up</TabsTrigger>
