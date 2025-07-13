@@ -66,114 +66,111 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
-      <div className="hidden bg-sidebar lg:flex flex-col items-center justify-center p-10 text-center text-sidebar-foreground overflow-hidden">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="flex flex-col items-center"
-        >
-            <PaypulseIcon className="w-32 h-32 mb-6 text-primary" />
-            <h1 className="text-5xl font-bold tracking-tight">Welcome to PayPulse</h1>
-            <motion.p 
+    <div className="flex flex-col items-center justify-center min-h-screen bg-background p-6">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-md text-center"
+      >
+        <div className="flex flex-col items-center justify-center mb-6">
+          <PaypulseIcon className="w-20 h-20 text-primary" />
+          <h1 className="text-4xl font-bold tracking-tight mt-4">Welcome to PayPulse</h1>
+           <motion.p 
               key={currentTagline}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.5, delay: 0.2 }}
-              className="text-xl text-muted-foreground mt-4 max-w-md h-16"
+              className="text-muted-foreground mt-2 h-10"
             >
               {taglines[currentTagline]}
             </motion.p>
-        </motion.div>
-        <div className="absolute bottom-10 text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} PayPulse Inc. All Rights Reserved.
         </div>
-      </div>
-      <div className="flex items-center justify-center min-h-screen bg-background p-6">
-            <Tabs defaultValue="login" className="w-full max-w-sm">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="login">Login</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
-              </TabsList>
-              <TabsContent value="login">
-                <Card className="border-0 shadow-none">
-                  <CardHeader className="text-center">
-                    <CardTitle className="text-2xl">Login to your account</CardTitle>
-                    <CardDescription>Enter your credentials to access your dashboard.</CardDescription>
-                  </CardHeader>
-                   <form onSubmit={handleLogin}>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-2 text-left">
-                        <Label htmlFor="login-email">Email</Label>
-                        <Input id="login-email" type="email" placeholder="m@example.com" required value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} />
+
+        <Tabs defaultValue="login" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="login">Login</TabsTrigger>
+            <TabsTrigger value="signup">Sign Up</TabsTrigger>
+          </TabsList>
+          <TabsContent value="login">
+            <Card className="border-0 shadow-none">
+              <CardHeader>
+                <CardTitle className="text-2xl font-normal">Login to your account</CardTitle>
+              </CardHeader>
+              <form onSubmit={handleLogin}>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2 text-left">
+                    <Label htmlFor="login-email">Email</Label>
+                    <Input id="login-email" type="email" placeholder="m@example.com" required value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} />
+                  </div>
+                  <div className="space-y-2 text-left">
+                    <Label htmlFor="login-password">Password</Label>
+                    <Input id="login-password" type="password" required value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)}/>
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Sign In
+                  </Button>
+                </CardFooter>
+              </form>
+            </Card>
+          </TabsContent>
+          <TabsContent value="signup">
+            <Card className="border-0 shadow-none">
+              <CardHeader>
+                <CardTitle className="text-2xl font-normal">Create an Account</CardTitle>
+              </CardHeader>
+              <form onSubmit={handleSignup}>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2 text-left">
+                    <Label htmlFor="signup-name">Full Name</Label>
+                    <Input id="signup-name" type="text" placeholder="John Doe" required value={signupName} onChange={(e) => setSignupName(e.target.value)}/>
+                  </div>
+                  <div className="space-y-2 text-left">
+                    <Label htmlFor="signup-email">Email</Label>
+                    <Input id="signup-email" type="email" placeholder="m@example.com" required value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)}/>
+                  </div>
+                  <div className="space-y-2 text-left">
+                    <Label htmlFor="signup-password">Password</Label>
+                    <Input id="signup-password" type="password" required value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)}/>
+                  </div>
+                  <div className="space-y-2 text-left">
+                    <Label>Role</Label>
+                    <RadioGroup 
+                      defaultValue={signupRole} 
+                      onValueChange={(value) => setSignupRole(value as UserRole)}
+                      className="flex items-center space-x-4 pt-2"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="admin" id="admin" />
+                        <Label htmlFor="admin">Admin</Label>
                       </div>
-                      <div className="space-y-2 text-left">
-                        <Label htmlFor="login-password">Password</Label>
-                        <Input id="login-password" type="password" required value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)}/>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="manager" id="manager" />
+                        <Label htmlFor="manager">Manager</Label>
                       </div>
-                    </CardContent>
-                    <CardFooter>
-                      <Button type="submit" className="w-full" disabled={loading}>
-                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Sign In
-                      </Button>
-                    </CardFooter>
-                  </form>
-                </Card>
-              </TabsContent>
-              <TabsContent value="signup">
-                <Card className="border-0 shadow-none">
-                  <CardHeader className="text-center">
-                    <CardTitle className="text-2xl">Create an Account</CardTitle>
-                    <CardDescription>Get started by creating a new account.</CardDescription>
-                  </CardHeader>
-                  <form onSubmit={handleSignup}>
-                    <CardContent className="space-y-4">
-                       <div className="space-y-2 text-left">
-                        <Label htmlFor="signup-name">Full Name</Label>
-                        <Input id="signup-name" type="text" placeholder="John Doe" required value={signupName} onChange={(e) => setSignupName(e.target.value)}/>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="employee" id="employee" />
+                        <Label htmlFor="employee">Employee</Label>
                       </div>
-                      <div className="space-y-2 text-left">
-                        <Label htmlFor="signup-email">Email</Label>
-                        <Input id="signup-email" type="email" placeholder="m@example.com" required value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)}/>
-                      </div>
-                      <div className="space-y-2 text-left">
-                        <Label htmlFor="signup-password">Password</Label>
-                        <Input id="signup-password" type="password" required value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)}/>
-                      </div>
-                      <div className="space-y-2 text-left">
-                        <Label>Role</Label>
-                        <RadioGroup 
-                          defaultValue={signupRole} 
-                          onValueChange={(value) => setSignupRole(value as UserRole)}
-                          className="flex items-center space-x-4 pt-2"
-                        >
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="admin" id="admin" />
-                            <Label htmlFor="admin">Admin</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="manager" id="manager" />
-                            <Label htmlFor="manager">Manager</Label>
-                          </div>
-                           <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="employee" id="employee" />
-                            <Label htmlFor="employee">Employee</Label>
-                          </div>
-                        </RadioGroup>
-                      </div>
-                    </CardContent>
-                    <CardFooter>
-                       <Button type="submit" className="w-full" disabled={loading}>
-                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Create Account
-                      </Button>
-                    </CardFooter>
-                  </form>
-                </Card>
-              </TabsContent>
-            </Tabs>
+                    </RadioGroup>
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Create Account
+                  </Button>
+                </CardFooter>
+              </form>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </motion.div>
+      <div className="absolute bottom-5 text-sm text-muted-foreground">
+        &copy; {new Date().getFullYear()} PayPulse Inc. All Rights Reserved.
       </div>
     </div>
   );
