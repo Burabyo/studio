@@ -36,7 +36,7 @@ export function PayslipGenerator() {
   const [generatedPayslip, setGeneratedPayslip] = useState<string | null>(null);
   const { employees } = useEmployeeContext();
   const { transactions } = useTransactionContext();
-  const { currency, formatCurrency, getCurrencySymbol } = useCurrency();
+  const { currency, getCurrencySymbol, taxRate, recurringContributions: globalContributions } = useCurrency();
 
   const form = useForm<PayslipFormValues>({
     resolver: zodResolver(payslipSchema),
@@ -70,9 +70,11 @@ export function PayslipGenerator() {
         const allowances = employeeTransactions.filter(t => t.type === 'Bonus').reduce((acc, t) => ({...acc, [t.description]: t.amount}), {});
         const deductions = employeeTransactions.filter(t => t.type === 'Deduction' || t.type === 'Loan' || t.type === 'Advance').reduce((acc, t) => ({...acc, [t.description]: t.amount}), {});
         
-        // Let's assume some defaults for now
-        const taxes = employee.salary * 0.2; 
-        const recurringContributions = { "Pension Fund": employee.salary * 0.05 };
+        const taxes = employee.salary * (taxRate / 100); 
+        const recurringContributions = globalContributions.reduce((acc, contribution) => {
+            acc[contribution.name] = employee.salary * (contribution.percentage / 100);
+            return acc;
+        }, {} as Record<string, number>);
 
         const totalAllowances = Object.values(allowances).reduce((sum: number, amount) => sum + (amount as number), 0);
         const totalDeductions = Object.values(deductions).reduce((sum: number, amount) => sum + (amount as number), 0);
