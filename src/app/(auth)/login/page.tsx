@@ -49,12 +49,12 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
-       <div className="flex flex-col items-center text-center">
-            <PaypulseIcon className="w-12 h-12 mb-4 text-primary"/>
-            <h1 className="text-3xl font-bold">Welcome to PayPulse</h1>
-            <p className="text-muted-foreground mb-8">Securely manage your payroll.</p>
-            <Tabs defaultValue="login" className="w-full max-w-sm">
+    <div className="flex items-center justify-center min-h-screen bg-background p-4">
+       <div className="flex flex-col items-center text-center w-full">
+            <PaypulseIcon className="w-16 h-16 mb-6 text-primary"/>
+            <h1 className="text-4xl font-bold tracking-tight">Welcome to PayPulse</h1>
+            <p className="text-lg text-muted-foreground mt-2 mb-8">Securely manage your payroll.</p>
+            <Tabs defaultValue="login" className="w-full max-w-md">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="login">Login</TabsTrigger>
                 <TabsTrigger value="signup">Sign Up</TabsTrigger>
