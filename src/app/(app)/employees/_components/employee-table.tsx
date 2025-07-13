@@ -24,7 +24,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { 
   AlertDialog,
@@ -39,16 +38,16 @@ import {
 } from "@/components/ui/alert-dialog";
 import { EmployeeForm } from "./employee-form";
 import { Badge } from "@/components/ui/badge";
-import { employees as initialEmployees } from "../data";
 import { toast } from "@/hooks/use-toast";
+import { useEmployeeContext } from "@/context/employee-context";
 
 export function EmployeeTable() {
-  const [employees, setEmployees] = React.useState<Employee[]>(initialEmployees);
+  const { employees, addEmployee, editEmployee, deleteEmployee } = useEmployeeContext();
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [selectedEmployee, setSelectedEmployee] = React.useState<Employee | null>(null);
 
-  const handleAddEmployee = (employee: Employee) => {
-    setEmployees([...employees, { ...employee, id: `EMP${(employees.length + 1).toString().padStart(3, '0')}` }]);
+  const handleAddEmployee = (employee: Omit<Employee, 'id'>) => {
+    addEmployee(employee);
     toast({
       title: "Employee Added",
       description: `${employee.name} has been successfully added.`,
@@ -57,7 +56,7 @@ export function EmployeeTable() {
   };
   
   const handleEditEmployee = (employee: Employee) => {
-    setEmployees(employees.map(e => e.id === employee.id ? employee : e));
+    editEmployee(employee);
     toast({
         title: "Employee Updated",
         description: `${employee.name}'s details have been updated.`,
@@ -67,7 +66,7 @@ export function EmployeeTable() {
   };
 
   const handleDeleteEmployee = (employeeId: string) => {
-    setEmployees(employees.filter(e => e.id !== employeeId));
+    deleteEmployee(employeeId);
      toast({
       title: "Employee Deleted",
       description: `Employee has been removed from the system.`,

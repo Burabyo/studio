@@ -1,8 +1,7 @@
-
 "use client";
 
 import * as React from "react";
-import type { Transaction, Employee } from "@/lib/types";
+import type { Transaction } from "@/lib/types";
 import {
   Table,
   TableBody,
@@ -25,7 +24,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { 
   AlertDialog,
@@ -40,10 +38,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { TransactionForm } from "./transaction-form";
 import { Badge } from "@/components/ui/badge";
-import { transactions as initialTransactions } from "../data";
-import { employees as initialEmployees } from "../../employees/data";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useEmployeeContext } from "@/context/employee-context";
+import { useTransactionContext } from "@/context/transaction-context";
 
 const statusColors = {
   Pending: "bg-yellow-500 hover:bg-yellow-500/80",
@@ -53,16 +51,13 @@ const statusColors = {
 };
 
 export function TransactionTable() {
-  const [employees] = React.useState<Employee[]>(initialEmployees);
-  const [transactions, setTransactions] = React.useState<Transaction[]>(initialTransactions);
+  const { employees } = useEmployeeContext();
+  const { transactions, addTransaction, editTransaction, deleteTransaction } = useTransactionContext();
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [selectedTransaction, setSelectedTransaction] = React.useState<Transaction | null>(null);
 
   const handleAddTransaction = (transaction: Omit<Transaction, 'id'>) => {
-    setTransactions([
-        ...transactions, 
-        { ...transaction, id: `TRN${(transactions.length + 1).toString().padStart(3, '0')}` }
-    ]);
+    addTransaction(transaction);
     toast({
       title: "Transaction Added",
       description: `The transaction for ${transaction.employeeName} has been recorded.`,
@@ -71,7 +66,7 @@ export function TransactionTable() {
   };
   
   const handleEditTransaction = (transaction: Transaction) => {
-    setTransactions(transactions.map(t => t.id === transaction.id ? transaction : t));
+    editTransaction(transaction);
     toast({
         title: "Transaction Updated",
         description: `The transaction for ${transaction.employeeName} has been updated.`,
@@ -81,7 +76,7 @@ export function TransactionTable() {
   };
 
   const handleDeleteTransaction = (transactionId: string) => {
-    setTransactions(transactions.filter(t => t.id !== transactionId));
+    deleteTransaction(transactionId);
      toast({
       title: "Transaction Deleted",
       description: `Transaction has been removed from the system.`,

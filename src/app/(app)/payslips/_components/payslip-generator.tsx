@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,10 +19,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { generatePayslip } from "@/ai/flows/generate-payslip";
 import { toast } from "@/hooks/use-toast";
-import { employees as initialEmployees } from "../../employees/data";
-import { transactions as initialTransactions } from "../../payroll/data";
-import type { Employee, Transaction } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useEmployeeContext } from "@/context/employee-context";
+import { useTransactionContext } from "@/context/transaction-context";
 
 const payslipSchema = z.object({
   employeeId: z.string({ required_error: "Please select an employee." }),
@@ -33,8 +32,8 @@ type PayslipFormValues = z.infer<typeof payslipSchema>;
 export function PayslipGenerator() {
   const [isLoading, setIsLoading] = useState(false);
   const [generatedPayslip, setGeneratedPayslip] = useState<string | null>(null);
-  const [employees] = useState<Employee[]>(initialEmployees);
-  const [transactions] = useState<Transaction[]>(initialTransactions);
+  const { employees } = useEmployeeContext();
+  const { transactions } = useTransactionContext();
 
   const form = useForm<PayslipFormValues>({
     resolver: zodResolver(payslipSchema),
@@ -62,7 +61,7 @@ export function PayslipGenerator() {
             t.employeeId === employee.id && 
             new Date(t.date).getMonth() === currentMonth &&
             new Date(t.date).getFullYear() === currentYear &&
-            t.status === 'Approved' || t.status === 'Paid'
+            (t.status === 'Approved' || t.status === 'Paid')
         );
 
         const allowances = employeeTransactions.filter(t => t.type === 'Bonus').reduce((acc, t) => ({...acc, [t.description]: t.amount}), {});

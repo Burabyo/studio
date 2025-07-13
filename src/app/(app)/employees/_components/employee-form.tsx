@@ -24,7 +24,6 @@ import type { Employee } from "@/lib/types";
 import React from "react";
 
 const formSchema = z.object({
-  id: z.string().optional(),
   name: z.string().min(2, "Name must be at least 2 characters."),
   employeeId: z.string().min(1, "Employee ID is required."),
   jobTitle: z.string().min(2, "Job title is required."),
@@ -38,7 +37,7 @@ type EmployeeFormValues = z.infer<typeof formSchema>;
 
 interface EmployeeFormProps {
     setDialogOpen: (open: boolean) => void;
-    onSubmit: (values: Employee) => void;
+    onSubmit: (values: any) => void;
     employee?: Employee | null;
 }
 
@@ -46,7 +45,6 @@ export function EmployeeForm({ setDialogOpen, onSubmit, employee }: EmployeeForm
   const form = useForm<EmployeeFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      id: employee?.id || "",
       name: employee?.name || "",
       employeeId: employee?.id || "",
       jobTitle: employee?.jobTitle || "",
@@ -59,7 +57,6 @@ export function EmployeeForm({ setDialogOpen, onSubmit, employee }: EmployeeForm
 
   React.useEffect(() => {
     form.reset(employee ? { ...employee, employeeId: employee.id } : {
-      id: "",
       name: "",
       employeeId: "",
       jobTitle: "",
