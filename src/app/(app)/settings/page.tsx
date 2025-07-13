@@ -76,7 +76,7 @@ function ContributionForm({ setDialogOpen, onSubmit, contribution }: { setDialog
 
 
 export default function SettingsPage() {
-  const { currency, setCurrency, taxRate, setTaxRate, recurringContributions, addContribution, editContribution, deleteContribution } = useCurrency();
+  const { currency, setCurrency, taxRate, setTaxRate, recurringContributions, addContribution, editContribution, deleteContribution, payslipInfo, setPayslipInfo } = useCurrency();
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [selectedContribution, setSelectedContribution] = React.useState<{ contribution: RecurringContribution, index: number } | null>(null);
 
@@ -105,6 +105,13 @@ export default function SettingsPage() {
   const openNewDialog = () => {
     setSelectedContribution(null);
     setIsDialogOpen(true);
+  }
+
+  const handlePayslipInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPayslipInfo({
+        ...payslipInfo,
+        [e.target.name]: e.target.value
+    });
   }
 
   return (
@@ -139,6 +146,27 @@ export default function SettingsPage() {
             </RadioGroup>
           </div>
         </CardContent>
+      </Card>
+
+      <Card>
+          <CardHeader>
+              <CardTitle>Payslip Template</CardTitle>
+              <CardDescription>Customize the branding and contact information on generated payslips.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+               <div className="space-y-2">
+                  <Label htmlFor="companyName">Company Name</Label>
+                  <Input id="companyName" name="companyName" value={payslipInfo.companyName} onChange={handlePayslipInfoChange} placeholder="e.g., PayPulse Inc."/>
+              </div>
+              <div className="space-y-2">
+                  <Label htmlFor="companyTagline">Company Tagline / Header</Label>
+                  <Input id="companyTagline" name="companyTagline" value={payslipInfo.companyTagline} onChange={handlePayslipInfoChange} placeholder="e.g., Your Trusted Payroll Partner"/>
+              </div>
+              <div className="space-y-2">
+                  <Label htmlFor="companyContact">Contact Information</Label>
+                  <Input id="companyContact" name="companyContact" value={payslipInfo.companyContact} onChange={handlePayslipInfoChange} placeholder="e.g., contact@paypulse.com | +1 234 567 890"/>
+              </div>
+          </CardContent>
       </Card>
 
       <Card>

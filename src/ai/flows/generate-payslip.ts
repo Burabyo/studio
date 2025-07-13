@@ -12,6 +12,9 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const GeneratePayslipInputSchema = z.object({
+  companyName: z.string().describe('The name of the company issuing the payslip.'),
+  companyTagline: z.string().describe('The tagline or header for the company.'),
+  companyContact: z.string().describe('The contact information for the company.'),
   employeeName: z.string().describe('The name of the employee.'),
   employeeId: z.string().describe('The ID of the employee.'),
   jobTitle: z.string().describe('The job title of the employee.'),
@@ -44,15 +47,24 @@ const prompt = ai.definePrompt({
   name: 'generatePayslipPrompt',
   input: {schema: GeneratePayslipInputSchema},
   output: {schema: GeneratePayslipOutputSchema},
-  prompt: `You are an expert HR assistant responsible for generating payslips for employees.
+  prompt: `You are an expert HR assistant responsible for generating branded payslips for employees.
 
-  Generate a personalized payslip for the employee with the following information. The payslip should be easy to read and understand. All monetary values should be prefixed with the currency symbol '{{{currencySymbol}}}'.
+  Generate a professional, personalized payslip for the employee with the following information. The payslip should be easy to read and understand. All monetary values should be prefixed with the currency symbol '{{{currencySymbol}}}'.
+
+  ==================================================
+  {{companyName}}
+  {{companyTagline}}
+  ==================================================
+  
+  PAYSLIP FOR: {{payPeriod}}
 
   Employee Name: {{{employeeName}}}
   Employee ID: {{{employeeId}}}
   Job Title: {{{jobTitle}}}
-  Pay Period: {{{payPeriod}}}
 
+  --------------------------------------------------
+  INCOME
+  --------------------------------------------------
   Gross Pay: {{{currencySymbol}}}{{{grossPay}}}
 
   Allowances:
@@ -60,6 +72,9 @@ const prompt = ai.definePrompt({
   - {{key}}: {{{../currencySymbol}}}{{{this}}}
   {{/each}}
 
+  --------------------------------------------------
+  DEDUCTIONS
+  --------------------------------------------------
   Deductions:
   {{#each deductions}}
   - {{key}}: {{{../currencySymbol}}}{{{this}}}
@@ -71,10 +86,19 @@ const prompt = ai.definePrompt({
   {{/each}}
 
   Taxes: {{{currencySymbol}}}{{{taxes}}}
+  
+  --------------------------------------------------
+  SUMMARY
+  --------------------------------------------------
   Net Pay: {{{currencySymbol}}}{{{netPay}}}
 
+  Payment to:
   Bank Name: {{{bankName}}}
   Account Number: {{{accountNumber}}}
+
+  ==================================================
+  {{companyContact}}
+  ==================================================
   `,
 });
 

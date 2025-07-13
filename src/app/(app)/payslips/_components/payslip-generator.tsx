@@ -36,7 +36,7 @@ export function PayslipGenerator() {
   const [generatedPayslip, setGeneratedPayslip] = useState<string | null>(null);
   const { employees } = useEmployeeContext();
   const { transactions } = useTransactionContext();
-  const { currency, getCurrencySymbol, taxRate, recurringContributions: globalContributions } = useCurrency();
+  const { currency, getCurrencySymbol, taxRate, recurringContributions: globalContributions, payslipInfo } = useCurrency();
 
   const form = useForm<PayslipFormValues>({
     resolver: zodResolver(payslipSchema),
@@ -85,6 +85,9 @@ export function PayslipGenerator() {
         const currencySymbol = getCurrencySymbol();
 
         const input = {
+            companyName: payslipInfo.companyName,
+            companyTagline: payslipInfo.companyTagline,
+            companyContact: payslipInfo.companyContact,
             employeeName: employee.name,
             employeeId: employee.id,
             jobTitle: employee.jobTitle,

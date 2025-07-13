@@ -9,6 +9,12 @@ export interface RecurringContribution {
   percentage: number;
 }
 
+export interface PayslipInfo {
+    companyName: string;
+    companyTagline: string;
+    companyContact: string;
+}
+
 interface CurrencyContextType {
   currency: Currency;
   setCurrency: (currency: Currency) => void;
@@ -20,6 +26,8 @@ interface CurrencyContextType {
   addContribution: (contribution: RecurringContribution) => void;
   editContribution: (index: number, contribution: RecurringContribution) => void;
   deleteContribution: (index: number) => void;
+  payslipInfo: PayslipInfo;
+  setPayslipInfo: (info: PayslipInfo) => void;
 }
 
 const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined);
@@ -30,6 +38,11 @@ export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
   const [recurringContributions, setRecurringContributions] = useState<RecurringContribution[]>([
     { name: 'Pension Fund', percentage: 5 } // Default 5%
   ]);
+  const [payslipInfo, setPayslipInfo] = useState<PayslipInfo>({
+    companyName: 'PayPulse Inc.',
+    companyTagline: 'Your Trusted Payroll Partner',
+    companyContact: 'contact@paypulse.com'
+  });
 
   const addContribution = (contribution: RecurringContribution) => {
     setRecurringContributions([...recurringContributions, contribution]);
@@ -70,7 +83,9 @@ export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
       recurringContributions,
       addContribution,
       editContribution,
-      deleteContribution
+      deleteContribution,
+      payslipInfo,
+      setPayslipInfo
     }}>
       {children}
     </CurrencyContext.Provider>
