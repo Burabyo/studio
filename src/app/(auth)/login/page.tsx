@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { motion } from "framer-motion";
 
@@ -28,10 +28,16 @@ export default function LoginPage() {
 
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
+  const [signupConfirmPassword, setSignupConfirmPassword] = useState("");
   const [signupName, setSignupName] = useState("");
   const [signupRole, setSignupRole] = useState<UserRole>("admin");
+  const [showSignupPassword, setShowSignupPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const [currentTagline, setCurrentTagline] = useState(0);
 
   useEffect(() => {
@@ -55,6 +61,11 @@ export default function LoginPage() {
   
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (signupPassword !== signupConfirmPassword) {
+      toast({ variant: "destructive", title: "Sign-up Failed", description: "Passwords do not match." });
+      return;
+    }
+
     try {
       await signup(signupEmail, signupPassword, signupName, signupRole);
       router.push('/dashboard');
@@ -105,7 +116,24 @@ export default function LoginPage() {
                   </div>
                   <div className="space-y-2 text-left">
                     <Label htmlFor="login-password">Password</Label>
-                    <Input id="login-password" type="password" required value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)}/>
+                    <div className="relative">
+                      <Input 
+                        id="login-password" 
+                        type={showLoginPassword ? "text" : "password"}
+                        required 
+                        value={loginPassword} 
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:bg-transparent"
+                        onClick={() => setShowLoginPassword(prev => !prev)}
+                      >
+                        {showLoginPassword ? <EyeOff /> : <Eye />}
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
                 <CardFooter>
@@ -134,7 +162,45 @@ export default function LoginPage() {
                   </div>
                   <div className="space-y-2 text-left">
                     <Label htmlFor="signup-password">Password</Label>
-                    <Input id="signup-password" type="password" required value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)}/>
+                     <div className="relative">
+                      <Input 
+                        id="signup-password" 
+                        type={showSignupPassword ? "text" : "password"}
+                        required 
+                        value={signupPassword} 
+                        onChange={(e) => setSignupPassword(e.target.value)}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:bg-transparent"
+                        onClick={() => setShowSignupPassword(prev => !prev)}
+                      >
+                        {showSignupPassword ? <EyeOff /> : <Eye />}
+                      </Button>
+                    </div>
+                  </div>
+                   <div className="space-y-2 text-left">
+                    <Label htmlFor="signup-confirm-password">Confirm Password</Label>
+                     <div className="relative">
+                      <Input 
+                        id="signup-confirm-password" 
+                        type={showConfirmPassword ? "text" : "password"}
+                        required 
+                        value={signupConfirmPassword} 
+                        onChange={(e) => setSignupConfirmPassword(e.target.value)}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:bg-transparent"
+                        onClick={() => setShowConfirmPassword(prev => !prev)}
+                      >
+                        {showConfirmPassword ? <EyeOff /> : <Eye />}
+                      </Button>
+                    </div>
                   </div>
                   <div className="space-y-2 text-left">
                     <Label>Role</Label>
