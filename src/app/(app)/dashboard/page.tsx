@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Briefcase, Banknote, FileText, AlertTriangle } from "lucide-react";
+import { Users, Briefcase, Banknote, FileText } from "lucide-react";
 import { PayrollChart } from "./_components/payroll-chart";
 import { useEmployeeContext } from "@/context/employee-context";
 import { useTransactionContext } from "@/context/transaction-context";
@@ -13,8 +13,6 @@ export default function DashboardPage() {
   const { formatCurrency } = useCurrency();
 
   const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
-  const currentMonthIndex = new Date().getMonth();
-  const currentYear = new Date().getFullYear();
 
   const totalPayroll = employees.reduce((sum, emp) => {
     if (emp.employmentType === 'Monthly Salary') {
@@ -33,16 +31,6 @@ export default function DashboardPage() {
   const pendingAdvancesCount = transactions.filter(t => t.type === 'Advance' && t.status === 'Pending').length;
 
   const payslipsGenerated = employees.length;
-  
-  const nextTaxFilingDate = () => {
-    const today = new Date();
-    const currentMonth = today.getMonth();
-    const currentYear = today.getFullYear();
-    // Assuming filing is due on the 15th of the next month
-    const dueDate = new Date(currentYear, currentMonth + 1, 15);
-    return dueDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-  }
-
 
   return (
     <div className="flex flex-col gap-6">
@@ -95,25 +83,13 @@ export default function DashboardPage() {
         </Card>
       </div>
       
-      <div className="grid gap-4 md:grid-cols-2">
-          <Card>
+      <div className="grid gap-4">
+          <Card className="md:col-span-2">
             <CardHeader>
               <CardTitle>Payroll History</CardTitle>
             </CardHeader>
             <CardContent>
               <PayrollChart />
-            </CardContent>
-          </Card>
-          <Card className="bg-destructive/10 border-destructive/30">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-destructive">Tax Filing Due</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-destructive" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-destructive">{nextTaxFilingDate()}</div>
-              <p className="text-xs text-destructive/80">
-                Please ensure all tax obligations for the previous period are settled.
-              </p>
             </CardContent>
           </Card>
       </div>
