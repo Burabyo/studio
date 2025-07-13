@@ -1,9 +1,9 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth, UserRole } from "@/context/auth-context";
 import { useRouter } from "next/navigation";
 import { PaypulseIcon } from "@/components/icons";
@@ -13,14 +13,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { motion } from "framer-motion";
 
-const taglines = [
-  "The simple, secure, and intelligent way to manage your payroll.",
-  "Precision payroll, simplified.",
-  "Empowering your business, one payslip at a time.",
-  "Your trusted partner in payroll management.",
-];
+const tagline = "The simple, secure, and intelligent way to manage your payroll.";
 
 export default function LoginPage() {
   const { signup, login, loading } = useAuth();
@@ -37,15 +31,6 @@ export default function LoginPage() {
   const [signupRole, setSignupRole] = useState<UserRole>("admin");
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  const [currentTagline, setCurrentTagline] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTagline((prev) => (prev + 1) % taglines.length);
-    }, 5000); // Change tagline every 5 seconds
-    return () => clearInterval(interval);
-  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,24 +63,13 @@ export default function LoginPage() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background p-6">
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-lg text-center"
-      >
+      <div className="w-full max-w-lg text-center">
         <div className="flex flex-col items-center justify-center mb-6">
           <PaypulseIcon className="w-20 h-20 text-primary" />
           <h1 className="text-4xl font-bold tracking-tight mt-4">Welcome to PayPulse</h1>
-           <motion.p 
-              key={currentTagline}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="text-muted-foreground mt-2 h-10"
-            >
-              {taglines[currentTagline]}
-            </motion.p>
+            <p className="text-muted-foreground mt-2 h-10">
+              {tagline}
+            </p>
         </div>
 
         <Tabs defaultValue="login" className="w-full">
@@ -234,7 +208,7 @@ export default function LoginPage() {
             </Card>
           </TabsContent>
         </Tabs>
-      </motion.div>
+      </div>
       <div className="absolute bottom-5 text-sm text-muted-foreground">
         &copy; {new Date().getFullYear()} PayPulse Inc. All Rights Reserved.
       </div>
