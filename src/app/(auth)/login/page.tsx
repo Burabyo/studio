@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 export default function LoginPage() {
   const { signup, login, loading } = useAuth();
@@ -66,11 +67,11 @@ export default function LoginPage() {
                   </CardHeader>
                    <form onSubmit={handleLogin}>
                     <CardContent className="space-y-4">
-                      <div className="space-y-2">
+                      <div className="space-y-2 text-left">
                         <Label htmlFor="login-email">Email</Label>
                         <Input id="login-email" type="email" placeholder="m@example.com" required value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} />
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-2 text-left">
                         <Label htmlFor="login-password">Password</Label>
                         <Input id="login-password" type="password" required value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)}/>
                       </div>
@@ -92,17 +93,38 @@ export default function LoginPage() {
                   </CardHeader>
                   <form onSubmit={handleSignup}>
                     <CardContent className="space-y-4">
-                       <div className="space-y-2">
+                       <div className="space-y-2 text-left">
                         <Label htmlFor="signup-name">Full Name</Label>
                         <Input id="signup-name" type="text" placeholder="John Doe" required value={signupName} onChange={(e) => setSignupName(e.target.value)}/>
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-2 text-left">
                         <Label htmlFor="signup-email">Email</Label>
                         <Input id="signup-email" type="email" placeholder="m@example.com" required value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)}/>
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-2 text-left">
                         <Label htmlFor="signup-password">Password</Label>
                         <Input id="signup-password" type="password" required value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)}/>
+                      </div>
+                      <div className="space-y-2 text-left">
+                        <Label>Role</Label>
+                        <RadioGroup 
+                          defaultValue={signupRole} 
+                          onValueChange={(value) => setSignupRole(value as UserRole)}
+                          className="flex items-center space-x-4 pt-2"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="admin" id="admin" />
+                            <Label htmlFor="admin">Admin</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="manager" id="manager" />
+                            <Label htmlFor="manager">Manager</Label>
+                          </div>
+                           <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="employee" id="employee" />
+                            <Label htmlFor="employee">Employee</Label>
+                          </div>
+                        </RadioGroup>
                       </div>
                     </CardContent>
                     <CardFooter>
