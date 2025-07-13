@@ -60,153 +60,162 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen py-12 bg-background">
-        <div className="mx-auto grid w-[420px] gap-6">
-            <div className="grid gap-2 text-center">
-                <PaypulseIcon className="w-16 h-16 text-primary mb-4 mx-auto" />
-                <h1 className="text-3xl font-bold tracking-tight">Welcome to PayPulse</h1>
-                 <p className="text-muted-foreground">The simple, secure, and intelligent way to manage your payroll.</p>
-            </div>
-            
-             <Tabs defaultValue="login" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="login">Login</TabsTrigger>
-                    <TabsTrigger value="signup">Sign Up</TabsTrigger>
-                </TabsList>
-                <TabsContent value="login">
-                    <Card className="border-none shadow-none">
-                    <form onSubmit={handleLogin}>
-                        <CardHeader className="text-center px-0">
-                            <CardTitle className="text-2xl">Login to your account</CardTitle>
-                            <CardDescription>Enter your credentials to access your dashboard.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="grid gap-4 px-0">
-                        <div className="grid gap-2">
-                            <Label htmlFor="login-email">Email</Label>
-                            <Input id="login-email" type="email" placeholder="m@example.com" required value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="login-password">Password</Label>
-                             <div className="relative">
-                                <Input 
-                                    id="login-password" 
-                                    type={showLoginPassword ? "text" : "password"}
-                                    required 
-                                    value={loginPassword} 
-                                    onChange={(e) => setLoginPassword(e.target.value)}
-                                />
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:bg-transparent"
-                                    onClick={() => setShowLoginPassword(prev => !prev)}
-                                >
-                                    {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                </Button>
-                            </div>
-                        </div>
-                        </CardContent>
-                        <CardFooter className="px-0">
-                        <Button type="submit" className="w-full" disabled={loading}>
-                            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Sign In
-                        </Button>
-                        </CardFooter>
-                    </form>
-                    </Card>
-                </TabsContent>
-                <TabsContent value="signup">
-                    <Card className="border-none shadow-none">
-                    <form onSubmit={handleSignup}>
-                         <CardHeader className="text-center px-0">
-                            <CardTitle className="text-2xl">Create an account</CardTitle>
-                            <CardDescription>Get started with PayPulse in seconds.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="grid gap-4 px-0">
+    <div className="w-full min-h-screen grid grid-cols-1 lg:grid-cols-2">
+      <div className="hidden lg:flex flex-col items-center justify-center bg-background p-8">
+          <div className="grid gap-4 text-center max-w-md">
+              <PaypulseIcon className="w-24 h-24 text-primary mb-4 mx-auto" />
+              <h1 className="text-4xl font-bold tracking-tight">Welcome to PayPulse</h1>
+              <p className="text-xl text-muted-foreground">
+                  The simple, secure, and intelligent way to manage your payroll.
+              </p>
+          </div>
+      </div>
+       <div className="flex items-center justify-center p-6 sm:p-12">
+            <div className="w-full max-w-md">
+                <div className="lg:hidden grid gap-2 text-center mb-8">
+                    <PaypulseIcon className="w-16 h-16 text-primary mb-4 mx-auto" />
+                    <h1 className="text-3xl font-bold tracking-tight">Welcome to PayPulse</h1>
+                </div>
+                <Tabs defaultValue="login" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="login">Login</TabsTrigger>
+                        <TabsTrigger value="signup">Sign Up</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="login">
+                        <Card className="border-none shadow-none">
+                        <form onSubmit={handleLogin}>
+                            <CardHeader className="text-center px-0">
+                                <CardTitle className="text-2xl">Login to your account</CardTitle>
+                                <CardDescription>Enter your credentials to access your dashboard.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="grid gap-4 px-0">
                             <div className="grid gap-2">
-                                <Label htmlFor="signup-name">Full Name</Label>
-                                <Input id="signup-name" type="text" placeholder="John Doe" required value={signupName} onChange={(e) => setSignupName(e.target.value)}/>
+                                <Label htmlFor="login-email">Email</Label>
+                                <Input id="login-email" type="email" placeholder="m@example.com" required value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="signup-email">Email</Label>
-                                <Input id="signup-email" type="email" placeholder="m@example.com" required value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)}/>
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="signup-password">Password</Label>
+                                <Label htmlFor="login-password">Password</Label>
                                 <div className="relative">
                                     <Input 
-                                        id="signup-password" 
-                                        type={showSignupPassword ? "text" : "password"}
+                                        id="login-password" 
+                                        type={showLoginPassword ? "text" : "password"}
                                         required 
-                                        value={signupPassword} 
-                                        onChange={(e) => setSignupPassword(e.target.value)}
+                                        value={loginPassword} 
+                                        onChange={(e) => setLoginPassword(e.target.value)}
                                     />
                                     <Button
                                         type="button"
                                         variant="ghost"
                                         size="icon"
                                         className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:bg-transparent"
-                                        onClick={() => setShowSignupPassword(prev => !prev)}
+                                        onClick={() => setShowLoginPassword(prev => !prev)}
                                     >
-                                        {showSignupPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                        {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                     </Button>
                                 </div>
                             </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="signup-confirm-password">Confirm Password</Label>
-                                 <div className="relative">
-                                    <Input 
-                                        id="signup-confirm-password" 
-                                        type={showConfirmPassword ? "text" : "password"}
-                                        required 
-                                        value={signupConfirmPassword} 
-                                        onChange={(e) => setSignupConfirmPassword(e.target.value)}
-                                    />
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:bg-transparent"
-                                        onClick={() => setShowConfirmPassword(prev => !prev)}
-                                    >
-                                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                    </Button>
-                                </div>
-                            </div>
-                            <div className="grid gap-2">
-                                <Label>Role</Label>
-                                <RadioGroup 
-                                defaultValue={signupRole} 
-                                onValueChange={(value) => setSignupRole(value as UserRole)}
-                                className="flex items-center space-x-4 pt-2"
-                                >
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="admin" id="admin" />
-                                    <Label htmlFor="admin">Admin</Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="manager" id="manager" />
-                                    <Label htmlFor="manager">Manager</Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="employee" id="employee" />
-                                    <Label htmlFor="employee">Employee</Label>
-                                </div>
-                                </RadioGroup>
-                            </div>
-                        </CardContent>
-                        <CardFooter className="px-0">
+                            </CardContent>
+                            <CardFooter className="px-0">
                             <Button type="submit" className="w-full" disabled={loading}>
                                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Create Account
+                                Sign In
                             </Button>
-                        </CardFooter>
-                    </form>
-                    </Card>
-                </TabsContent>
-            </Tabs>
-        </div>
+                            </CardFooter>
+                        </form>
+                        </Card>
+                    </TabsContent>
+                    <TabsContent value="signup">
+                        <Card className="border-none shadow-none">
+                        <form onSubmit={handleSignup}>
+                            <CardHeader className="text-center px-0">
+                                <CardTitle className="text-2xl">Create an account</CardTitle>
+                                <CardDescription>Get started with PayPulse in seconds.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="grid gap-4 px-0">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="signup-name">Full Name</Label>
+                                    <Input id="signup-name" type="text" placeholder="John Doe" required value={signupName} onChange={(e) => setSignupName(e.target.value)}/>
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="signup-email">Email</Label>
+                                    <Input id="signup-email" type="email" placeholder="m@example.com" required value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)}/>
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="signup-password">Password</Label>
+                                    <div className="relative">
+                                        <Input 
+                                            id="signup-password" 
+                                            type={showSignupPassword ? "text" : "password"}
+                                            required 
+                                            value={signupPassword} 
+                                            onChange={(e) => setSignupPassword(e.target.value)}
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:bg-transparent"
+                                            onClick={() => setShowSignupPassword(prev => !prev)}
+                                        >
+                                            {showSignupPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                        </Button>
+                                    </div>
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="signup-confirm-password">Confirm Password</Label>
+                                    <div className="relative">
+                                        <Input 
+                                            id="signup-confirm-password" 
+                                            type={showConfirmPassword ? "text" : "password"}
+                                            required 
+                                            value={signupConfirmPassword} 
+                                            onChange={(e) => setSignupConfirmPassword(e.target.value)}
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:bg-transparent"
+                                            onClick={() => setShowConfirmPassword(prev => !prev)}
+                                        >
+                                            {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                        </Button>
+                                    </div>
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label>Role</Label>
+                                    <RadioGroup 
+                                    defaultValue={signupRole} 
+                                    onValueChange={(value) => setSignupRole(value as UserRole)}
+                                    className="flex items-center space-x-4 pt-2"
+                                    >
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="admin" id="admin" />
+                                        <Label htmlFor="admin">Admin</Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="manager" id="manager" />
+                                        <Label htmlFor="manager">Manager</Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="employee" id="employee" />
+                                        <Label htmlFor="employee">Employee</Label>
+                                    </div>
+                                    </RadioGroup>
+                                </div>
+                            </CardContent>
+                            <CardFooter className="px-0">
+                                <Button type="submit" className="w-full" disabled={loading}>
+                                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Create Account
+                                </Button>
+                            </CardFooter>
+                        </form>
+                        </Card>
+                    </TabsContent>
+                </Tabs>
+            </div>
       </div>
+    </div>
   );
 }
