@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth, UserRole } from "@/context/auth-context";
@@ -13,6 +13,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { motion } from "framer-motion";
+
+const taglines = [
+  "The simple, secure, and intelligent way to manage your payroll.",
+  "Precision payroll, simplified.",
+  "Empowering your business, one payslip at a time.",
+  "Your trusted partner in payroll management.",
+];
 
 export default function LoginPage() {
   const { signup, login, loading } = useAuth();
@@ -24,7 +32,14 @@ export default function LoginPage() {
   const [signupPassword, setSignupPassword] = useState("");
   const [signupName, setSignupName] = useState("");
   const [signupRole, setSignupRole] = useState<UserRole>("admin");
+  const [currentTagline, setCurrentTagline] = useState(0);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTagline((prev) => (prev + 1) % taglines.length);
+    }, 5000); // Change tagline every 5 seconds
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +60,6 @@ export default function LoginPage() {
       router.push('/dashboard');
       toast({ title: "Account Created", description: "Welcome to PayPulse!" });
     } catch (error: any) {
-       // Firebase provides more specific error codes. Let's display them.
        const errorMessage = error.code ? error.code.replace('auth/', '').replace(/-/g, ' ') : 'An unknown error occurred.';
        toast({ variant: "destructive", title: "Sign-up Failed", description: `Error: ${errorMessage}. Please check your details.` });
     }
@@ -53,12 +67,25 @@ export default function LoginPage() {
 
   return (
     <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
-      <div className="hidden bg-sidebar lg:flex flex-col items-center justify-center p-10 text-center text-sidebar-foreground">
-        <div className="flex flex-col items-center">
+      <div className="hidden bg-sidebar lg:flex flex-col items-center justify-center p-10 text-center text-sidebar-foreground overflow-hidden">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="flex flex-col items-center"
+        >
             <PaypulseIcon className="w-32 h-32 mb-6 text-primary" />
             <h1 className="text-5xl font-bold tracking-tight">Welcome to PayPulse</h1>
-            <p className="text-xl text-muted-foreground mt-4 max-w-md">The simple, secure, and intelligent way to manage your company's payroll.</p>
-        </div>
+            <motion.p 
+              key={currentTagline}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="text-xl text-muted-foreground mt-4 max-w-md h-16"
+            >
+              {taglines[currentTagline]}
+            </motion.p>
+        </motion.div>
         <div className="absolute bottom-10 text-sm text-muted-foreground">
             &copy; {new Date().getFullYear()} PayPulse Inc. All Rights Reserved.
         </div>
