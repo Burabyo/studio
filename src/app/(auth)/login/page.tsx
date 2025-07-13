@@ -69,7 +69,8 @@ export default function LoginPage() {
       await signup(signupEmail, signupPassword, signupName, signupRole);
       router.push('/dashboard');
       toast({ title: "Account Created", description: "Welcome to PayPulse!" });
-    } catch (error: any)       const errorMessage = error.code ? error.code.replace('auth/', '').replace(/-/g, ' ') : 'An unknown error occurred.';
+    } catch (error: any) {
+       const errorMessage = error.code ? error.code.replace('auth/', '').replace(/-/g, ' ') : 'An unknown error occurred.';
        toast({ variant: "destructive", title: "Sign-up Failed", description: `Error: ${errorMessage}. Please check your details.` });
     }
   };
