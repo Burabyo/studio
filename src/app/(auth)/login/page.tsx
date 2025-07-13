@@ -70,8 +70,8 @@ export default function LoginPage() {
               </p>
           </div>
       </div>
-       <div className="flex items-center justify-center lg:justify-start lg:pl-16 p-6 sm:p-12">
-            <div className="w-full max-w-md">
+       <div className="flex items-center justify-center p-6 sm:p-12">
+            <div className="w-full max-w-lg">
                 <div className="lg:hidden grid gap-2 text-center mb-8">
                     <PaypulseIcon className="w-16 h-16 text-primary mb-4 mx-auto" />
                     <h1 className="text-3xl font-bold tracking-tight">Welcome to PayPulse</h1>
