@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth, UserRole } from "@/context/auth-context";
@@ -12,14 +13,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { motion, AnimatePresence } from "framer-motion";
-
-const taglines = [
-  "The simple, secure, and intelligent way to manage your payroll.",
-  "Precision payroll, simplified for you.",
-  "Empowering your business, one payslip at a time.",
-  "Smart payroll for the modern workforce."
-];
 
 export default function LoginPage() {
   const { signup, login, loading } = useAuth();
@@ -36,15 +29,6 @@ export default function LoginPage() {
   const [signupRole, setSignupRole] = useState<UserRole>("admin");
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  const [taglineIndex, setTaglineIndex] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTaglineIndex((prevIndex) => (prevIndex + 1) % taglines.length);
-    }, 4000); // Change tagline every 4 seconds
-    return () => clearInterval(interval);
-  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,43 +60,12 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
-      <div className="hidden lg:flex flex-col items-center justify-center bg-muted p-10 text-center relative overflow-hidden">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="z-10"
-        >
-          <PaypulseIcon className="w-24 h-24 text-primary mx-auto mb-6" />
-          <h1 className="text-4xl font-bold tracking-tight text-foreground">
-            Welcome to PayPulse
-          </h1>
-          <div className="mt-4 text-lg text-muted-foreground h-12">
-            <AnimatePresence mode="wait">
-              <motion.p
-                key={taglineIndex}
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 20 }}
-                transition={{ duration: 0.5 }}
-              >
-                {taglines[taglineIndex]}
-              </motion.p>
-            </AnimatePresence>
-          </div>
-        </motion.div>
-         {/* Background decorative elements */}
-        <div className="absolute top-0 left-0 w-full h-full opacity-10 dark:opacity-5">
-            <div className="absolute -top-1/4 -left-1/4 w-1/2 h-1/2 bg-primary/20 rounded-full blur-3xl"></div>
-            <div className="absolute -bottom-1/4 -right-1/4 w-1/2 h-1/2 bg-accent/20 rounded-full blur-3xl"></div>
-        </div>
-      </div>
-       <div className="flex items-center justify-center py-12">
-        <div className="mx-auto grid w-[380px] gap-6">
-            <div className="grid gap-2 text-center lg:hidden">
+    <div className="flex items-center justify-center min-h-screen py-12 bg-background">
+        <div className="mx-auto grid w-[420px] gap-6">
+            <div className="grid gap-2 text-center">
                 <PaypulseIcon className="w-16 h-16 text-primary mb-4 mx-auto" />
                 <h1 className="text-3xl font-bold tracking-tight">Welcome to PayPulse</h1>
+                 <p className="text-muted-foreground">The simple, secure, and intelligent way to manage your payroll.</p>
             </div>
             
              <Tabs defaultValue="login" className="w-full">
@@ -123,11 +76,11 @@ export default function LoginPage() {
                 <TabsContent value="login">
                     <Card className="border-none shadow-none">
                     <form onSubmit={handleLogin}>
-                        <CardHeader className="text-center">
+                        <CardHeader className="text-center px-0">
                             <CardTitle className="text-2xl">Login to your account</CardTitle>
                             <CardDescription>Enter your credentials to access your dashboard.</CardDescription>
                         </CardHeader>
-                        <CardContent className="grid gap-4">
+                        <CardContent className="grid gap-4 px-0">
                         <div className="grid gap-2">
                             <Label htmlFor="login-email">Email</Label>
                             <Input id="login-email" type="email" placeholder="m@example.com" required value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} />
@@ -154,7 +107,7 @@ export default function LoginPage() {
                             </div>
                         </div>
                         </CardContent>
-                        <CardFooter>
+                        <CardFooter className="px-0">
                         <Button type="submit" className="w-full" disabled={loading}>
                             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Sign In
@@ -166,11 +119,11 @@ export default function LoginPage() {
                 <TabsContent value="signup">
                     <Card className="border-none shadow-none">
                     <form onSubmit={handleSignup}>
-                         <CardHeader className="text-center">
+                         <CardHeader className="text-center px-0">
                             <CardTitle className="text-2xl">Create an account</CardTitle>
                             <CardDescription>Get started with PayPulse in seconds.</CardDescription>
                         </CardHeader>
-                        <CardContent className="grid gap-4">
+                        <CardContent className="grid gap-4 px-0">
                             <div className="grid gap-2">
                                 <Label htmlFor="signup-name">Full Name</Label>
                                 <Input id="signup-name" type="text" placeholder="John Doe" required value={signupName} onChange={(e) => setSignupName(e.target.value)}/>
@@ -243,7 +196,7 @@ export default function LoginPage() {
                                 </RadioGroup>
                             </div>
                         </CardContent>
-                        <CardFooter>
+                        <CardFooter className="px-0">
                             <Button type="submit" className="w-full" disabled={loading}>
                                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Create Account
@@ -255,6 +208,5 @@ export default function LoginPage() {
             </Tabs>
         </div>
       </div>
-    </div>
   );
 }
