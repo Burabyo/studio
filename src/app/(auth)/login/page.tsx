@@ -71,7 +71,7 @@ export default function LoginPage() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-md text-center"
+        className="w-full max-w-lg text-center"
       >
         <div className="flex flex-col items-center justify-center mb-6">
           <PaypulseIcon className="w-20 h-20 text-primary" />
