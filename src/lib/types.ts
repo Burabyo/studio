@@ -7,3 +7,14 @@ export type Employee = {
   accountNumber: string;
   salary: number;
 };
+
+export type Transaction = {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  date: string;
+  type: 'Loan' | 'Advance' | 'Bonus' | 'Deduction';
+  amount: number;
+  description: string;
+  status: 'Pending' | 'Approved' | 'Paid' | 'Rejected';
+};
