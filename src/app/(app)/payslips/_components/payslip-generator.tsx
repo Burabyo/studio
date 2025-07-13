@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, Sparkles, FileText, ChevronsUpDown } from "lucide-react";
+import { Loader2, Sparkles, FileText, ChevronsUpDown, Printer, Download } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { generatePayslip } from "@/ai/flows/generate-payslip";
@@ -22,6 +22,7 @@ import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useEmployeeContext } from "@/context/employee-context";
 import { useTransactionContext } from "@/context/transaction-context";
+import { downloadPdf } from "@/lib/pdf";
 
 const payslipSchema = z.object({
   employeeId: z.string({ required_error: "Please select an employee." }),
@@ -106,6 +107,26 @@ export function PayslipGenerator() {
       setIsLoading(false);
     }
   }
+
+  const handlePrint = () => {
+    const printWindow = window.open('', '', 'height=800,width=800');
+    if (printWindow) {
+      printWindow.document.write('<html><head><title>Payslip</title>');
+      printWindow.document.write('<style>body { font-family: monospace; } pre { white-space: pre-wrap; }</style>');
+      printWindow.document.write('</head><body>');
+      printWindow.document.write(`<pre>${generatedPayslip}</pre>`);
+      printWindow.document.write('</body></html>');
+      printWindow.document.close();
+      printWindow.print();
+    }
+  };
+
+  const handleDownload = () => {
+    const employee = employees.find(e => e.id === form.getValues("employeeId"));
+    if (generatedPayslip && employee) {
+      downloadPdf(generatedPayslip, `payslip-${employee.id}-${new Date().toISOString().split('T')[0]}.pdf`);
+    }
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
@@ -195,10 +216,16 @@ export function PayslipGenerator() {
           {generatedPayslip && (
             <div>
                  <pre className="whitespace-pre-wrap font-sans text-sm bg-muted p-4 rounded-lg">{generatedPayslip}</pre>
-                 <Button className="w-full mt-4">
-                    <FileText className="mr-2 h-4 w-4" />
-                    Download PDF
-                 </Button>
+                 <div className="flex gap-2 mt-4">
+                    <Button onClick={handleDownload} className="w-full">
+                        <Download className="mr-2 h-4 w-4" />
+                        Download PDF
+                    </Button>
+                     <Button onClick={handlePrint} variant="outline" className="w-full">
+                        <Printer className="mr-2 h-4 w-4" />
+                        Print
+                    </Button>
+                 </div>
             </div>
           )}
            {!isLoading && !generatedPayslip && (
