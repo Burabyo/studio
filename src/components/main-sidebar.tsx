@@ -1,5 +1,7 @@
+
 "use client"
-import { usePathname } from 'next/navigation'
+import * as React from 'react'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   Sidebar,
   SidebarHeader,
@@ -8,7 +10,6 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarFooter,
-  SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { PaypulseIcon } from "@/components/icons"
 import {
@@ -16,21 +17,37 @@ import {
   Users,
   FileText,
   Settings,
-  CircleUser,
   Printer,
+  LogOut
 } from "lucide-react"
 import Link from "next/link"
+import { useAuth } from '@/context/auth-context'
+import { Button } from './ui/button'
 
-const menuItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/employees", label: "Employees", icon: Users },
-  { href: "/payroll", label: "Payroll", icon: FileText },
-  { href: "/payslips", label: "Payslips", icon: Printer },
-  { href: "/settings", label: "Settings", icon: Settings },
+const allMenuItems = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ['admin', 'manager', 'employee'] },
+  { href: "/employees", label: "Employees", icon: Users, roles: ['admin', 'manager'] },
+  { href: "/payroll", label: "Transactions", icon: FileText, roles: ['admin', 'manager'] },
+  { href: "/payslips", label: "Payslips", icon: Printer, roles: ['admin', 'manager', 'employee'] },
+  { href: "/settings", label: "Settings", icon: Settings, roles: ['admin'] },
 ];
 
 export function MainSidebar() {
-  const pathname = usePathname()
+  const pathname = usePathname();
+  const router = useRouter();
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    router.push('/login');
+  };
+
+  const menuItems = React.useMemo(() => {
+    if (!user) return [];
+    return allMenuItems.filter(item => item.roles.includes(user.role));
+  }, [user]);
+
+  if (!user) return null;
 
   return (
     <Sidebar
@@ -64,10 +81,23 @@ export function MainSidebar() {
       </SidebarContent>
       <SidebarFooter className="p-4">
         <SidebarMenu>
+           <SidebarMenuItem>
+             <SidebarMenuButton tooltip="Your Profile" className='justify-start'>
+                <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold">
+                        {user.name.charAt(0)}
+                    </div>
+                    <div className="flex flex-col items-start">
+                        <span className="font-semibold">{user.name}</span>
+                        <span className="text-xs capitalize text-muted-foreground">{user.role}</span>
+                    </div>
+                </div>
+              </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
-             <SidebarMenuButton tooltip="Your Profile">
-                <CircleUser />
-                <span>Jane Doe</span>
+             <SidebarMenuButton tooltip="Logout" onClick={handleLogout} variant="outline" className="border-sidebar-border">
+                <LogOut />
+                <span>Logout</span>
               </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,11 +7,13 @@ import { PayrollChart } from "./_components/payroll-chart";
 import { useEmployeeContext } from "@/context/employee-context";
 import { useTransactionContext } from "@/context/transaction-context";
 import { useCurrency } from "@/context/currency-context";
+import { useAuth } from "@/context/auth-context";
 
 export default function DashboardPage() {
   const { employees } = useEmployeeContext();
   const { transactions } = useTransactionContext();
   const { formatCurrency } = useCurrency();
+  const { user } = useAuth();
 
   const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
 
@@ -32,12 +35,14 @@ export default function DashboardPage() {
 
   const payslipsGenerated = employees.length;
 
+  if (!user) return null;
+
   return (
     <div className="flex flex-col gap-6">
       <header>
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground">
-          Welcome to PayPulse. Here&apos;s your payroll at a glance.
+          Welcome back, {user.name}. Here&apos;s your payroll at a glance.
         </p>
       </header>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

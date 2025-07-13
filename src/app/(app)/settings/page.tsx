@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -12,11 +13,12 @@ import { MoreHorizontal, PlusCircle, Trash2, Pencil } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/auth-context";
 
 const contributionSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
@@ -77,8 +79,22 @@ function ContributionForm({ setDialogOpen, onSubmit, contribution }: { setDialog
 
 export default function SettingsPage() {
   const { currency, setCurrency, taxRate, setTaxRate, recurringContributions, addContribution, editContribution, deleteContribution, payslipInfo, setPayslipInfo } = useCurrency();
+  const { user } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [selectedContribution, setSelectedContribution] = React.useState<{ contribution: RecurringContribution, index: number } | null>(null);
+
+  if (user?.role !== 'admin') {
+    return (
+        <div className="space-y-6">
+            <header>
+                <h1 className="text-3xl font-bold tracking-tight">Access Denied</h1>
+                <p className="text-muted-foreground">
+                You do not have permission to view this page.
+                </p>
+            </header>
+        </div>
+    );
+  }
 
   const handleAddContribution = (values: ContributionFormValues) => {
     addContribution(values);

@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -24,6 +25,8 @@ import { useEmployeeContext } from "@/context/employee-context";
 import { useTransactionContext } from "@/context/transaction-context";
 import { downloadPdf } from "@/lib/pdf";
 import { useCurrency } from "@/context/currency-context";
+import { useAuth } from "@/context/auth-context";
+import type { Employee } from "@/lib/types";
 
 const payslipSchema = z.object({
   employeeId: z.string({ required_error: "Please select an employee." }),
@@ -37,10 +40,20 @@ export function PayslipGenerator() {
   const { employees } = useEmployeeContext();
   const { transactions } = useTransactionContext();
   const { currency, getCurrencySymbol, taxRate, recurringContributions: globalContributions, payslipInfo } = useCurrency();
+  const { user } = useAuth();
 
   const form = useForm<PayslipFormValues>({
     resolver: zodResolver(payslipSchema),
   });
+  
+  const availableEmployees = user?.role === 'employee' ? employees.filter(e => e.id === user.employeeId) : employees;
+
+  useEffect(() => {
+    // If user is an employee, auto-select them.
+    if (user?.role === 'employee' && user.employeeId) {
+        form.setValue('employeeId', user.employeeId);
+    }
+  }, [user, form]);
 
   async function onSubmit(data: PayslipFormValues) {
     setIsLoading(true);
@@ -167,9 +180,10 @@ export function PayslipGenerator() {
                                 "w-full justify-between",
                                 !field.value && "text-muted-foreground"
                                 )}
+                                disabled={user?.role === 'employee'}
                             >
                                 {field.value
-                                ? employees.find(
+                                ? availableEmployees.find(
                                     (employee) => employee.id === field.value
                                     )?.name
                                 : "Select employee"}
@@ -183,7 +197,7 @@ export function PayslipGenerator() {
                             <CommandList>
                                 <CommandEmpty>No employee found.</CommandEmpty>
                                 <CommandGroup>
-                                {employees.map((employee) => (
+                                {availableEmployees.map((employee) => (
                                     <CommandItem
                                     value={employee.name}
                                     key={employee.id}
@@ -204,7 +218,7 @@ export function PayslipGenerator() {
                     )}
                 />
              
-              <Button type="submit" disabled={isLoading} className="w-full">
+              <Button type="submit" disabled={isLoading || !form.getValues('employeeId')} className="w-full">
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
                 Generate with AI
               </Button>

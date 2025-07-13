@@ -1,8 +1,10 @@
+
 "use client";
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import type { Employee } from '@/lib/types';
 import { employees as initialEmployees } from '@/app/(app)/employees/data';
+import { useAuth } from './auth-context';
 
 interface EmployeeContextType {
   employees: Employee[];
@@ -14,7 +16,16 @@ interface EmployeeContextType {
 const EmployeeContext = createContext<EmployeeContextType | undefined>(undefined);
 
 export const EmployeeProvider = ({ children }: { children: ReactNode }) => {
+  const { user } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
+  
+  const visibleEmployees = React.useMemo(() => {
+    if (user?.role === 'employee') {
+      return employees.filter(e => e.id === user.employeeId);
+    }
+    return employees;
+  }, [user, employees]);
+
 
   const addEmployee = (employee: Omit<Employee, 'id'>) => {
     const newEmployee = { ...employee, id: `EMP${(employees.length + 1).toString().padStart(3, '0')}` };
@@ -30,7 +41,7 @@ export const EmployeeProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <EmployeeContext.Provider value={{ employees, addEmployee, editEmployee, deleteEmployee }}>
+    <EmployeeContext.Provider value={{ employees: visibleEmployees, addEmployee, editEmployee, deleteEmployee }}>
       {children}
     </EmployeeContext.Provider>
   );

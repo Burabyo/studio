@@ -1,9 +1,12 @@
+
 "use client";
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import type { Transaction } from '@/lib/types';
 import { transactions as initialTransactions } from '@/app/(app)/payroll/data';
+import { employees as initialEmployees } from '@/app/(app)/employees/data';
 import { useEmployeeContext } from './employee-context';
+import { useAuth } from './auth-context';
 
 interface TransactionContextType {
   transactions: Transaction[];
@@ -15,17 +18,24 @@ interface TransactionContextType {
 const TransactionContext = createContext<TransactionContextType | undefined>(undefined);
 
 export const TransactionProvider = ({ children }: { children: ReactNode }) => {
-  const { employees } = useEmployeeContext();
+  const { employees } = useEmployeeContext(); // This will get the full list before filtering
+  const { user } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    // Sync employee names on initial load
     return initialTransactions.map(t => {
-      const employee = employees.find(e => e.id === t.employeeId);
+      const employee = initialEmployees.find(e => e.id === t.employeeId);
       return { ...t, employeeName: employee?.name || 'Unknown Employee' };
     });
   });
 
+  const visibleTransactions = React.useMemo(() => {
+    if (user?.role === 'employee') {
+        return transactions.filter(t => t.employeeId === user.employeeId);
+    }
+    return transactions;
+  }, [user, transactions]);
+
   const addTransaction = (transaction: Omit<Transaction, 'id' | 'employeeName'> & { employeeId: string }) => {
-    const employee = employees.find(e => e.id === transaction.employeeId);
+    const employee = initialEmployees.find(e => e.id === transaction.employeeId);
     const newTransaction = { 
         ...transaction, 
         id: `TRN${(transactions.length + 1).toString().padStart(3, '0')}`,
@@ -35,7 +45,7 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const editTransaction = (updatedTransaction: Transaction) => {
-    const employee = employees.find(e => e.id === updatedTransaction.employeeId);
+    const employee = initialEmployees.find(e => e.id === updatedTransaction.employeeId);
     const transactionWithCorrectName = {
       ...updatedTransaction,
       employeeName: employee?.name || 'Unknown Employee',
@@ -47,11 +57,10 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
     setTransactions(transactions.filter(t => t.id !== id));
   };
 
-  // Effect to update transaction names if employee names change
   React.useEffect(() => {
     setTransactions(currentTransactions => {
       return currentTransactions.map(t => {
-        const employee = employees.find(e => e.id === t.employeeId);
+        const employee = initialEmployees.find(e => e.id === t.employeeId);
         if (employee && t.employeeName !== employee.name) {
           return { ...t, employeeName: employee.name };
         }
@@ -62,7 +71,7 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
 
 
   return (
-    <TransactionContext.Provider value={{ transactions, addTransaction, editTransaction, deleteTransaction }}>
+    <TransactionContext.Provider value={{ transactions: visibleTransactions, addTransaction, editTransaction, deleteTransaction }}>
       {children}
     </TransactionContext.Provider>
   );
