@@ -62,8 +62,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-muted/40">
-        <main className="w-full max-w-md p-4">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-muted/40 p-4">
+        <main className="w-full max-w-lg">
             <div className="flex flex-col items-center justify-center text-center mb-8">
                 <PaypulseIcon className="w-16 h-16 text-primary mb-4" />
                 <h1 className="text-3xl font-bold tracking-tight">Welcome to PayPulse</h1>
@@ -76,9 +76,10 @@ export default function LoginPage() {
                 <TabsTrigger value="signup">Sign Up</TabsTrigger>
             </TabsList>
             <TabsContent value="login">
-                <Card className="border-0 shadow-none">
+                <Card>
                 <form onSubmit={handleLogin}>
-                    <CardContent className="space-y-4 pt-6">
+                    <CardHeader/>
+                    <CardContent className="space-y-4">
                     <div className="space-y-2 text-left">
                         <Label htmlFor="login-email">Email</Label>
                         <Input id="login-email" type="email" placeholder="m@example.com" required value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} />
@@ -105,7 +106,7 @@ export default function LoginPage() {
                         </div>
                     </div>
                     </CardContent>
-                    <CardFooter className="p-0 pt-2">
+                    <CardFooter>
                     <Button type="submit" className="w-full" disabled={loading}>
                         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Sign In
@@ -115,9 +116,10 @@ export default function LoginPage() {
                 </Card>
             </TabsContent>
             <TabsContent value="signup">
-                <Card className="border-0 shadow-none">
+                <Card>
                 <form onSubmit={handleSignup}>
-                    <CardContent className="space-y-4 pt-6">
+                    <CardHeader/>
+                    <CardContent className="space-y-4">
                     <div className="space-y-2 text-left">
                         <Label htmlFor="signup-name">Full Name</Label>
                         <Input id="signup-name" type="text" placeholder="John Doe" required value={signupName} onChange={(e) => setSignupName(e.target.value)}/>
@@ -190,7 +192,7 @@ export default function LoginPage() {
                         </RadioGroup>
                     </div>
                     </CardContent>
-                    <CardFooter className="p-0 pt-2">
+                    <CardFooter>
                     <Button type="submit" className="w-full" disabled={loading}>
                         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Create Account
@@ -200,10 +202,10 @@ export default function LoginPage() {
                 </Card>
             </TabsContent>
             </Tabs>
-            <footer className="mt-8 text-center text-sm text-muted-foreground">
-                PayPulse Inc. &copy; {new Date().getFullYear()}
-            </footer>
         </main>
+        <footer className="absolute bottom-8 text-center text-sm text-muted-foreground">
+            PayPulse Inc. &copy; {new Date().getFullYear()}
+        </footer>
     </div>
   );
 }
