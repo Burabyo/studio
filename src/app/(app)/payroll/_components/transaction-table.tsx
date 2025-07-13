@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -45,10 +46,10 @@ import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 const statusColors = {
-  Pending: "bg-yellow-500",
-  Approved: "bg-blue-500",
-  Paid: "bg-green-500",
-  Rejected: "bg-red-500",
+  Pending: "bg-yellow-500 hover:bg-yellow-500/80",
+  Approved: "bg-blue-500 hover:bg-blue-500/80",
+  Paid: "bg-green-500 hover:bg-green-500/80",
+  Rejected: "bg-red-500 hover:bg-red-500/80",
 };
 
 export function TransactionTable() {

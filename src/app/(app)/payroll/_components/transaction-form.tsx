@@ -1,3 +1,4 @@
+
 "use client";
 
 import { z } from "zod";
@@ -25,10 +26,11 @@ import { Textarea } from "@/components/ui/textarea";
 import type { Transaction, Employee } from "@/lib/types";
 import React from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, ChevronsUpDown } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
 const formSchema = z.object({
   id: z.string().optional(),
@@ -52,14 +54,17 @@ interface TransactionFormProps {
 export function TransactionForm({ setDialogOpen, onSubmit, transaction, employees }: TransactionFormProps) {
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      id: transaction?.id || "",
-      employeeId: transaction?.employeeId || "",
-      date: transaction ? new Date(transaction.date) : new Date(),
-      type: transaction?.type || "Advance",
-      amount: transaction?.amount || 0,
-      description: transaction?.description || "",
-      status: transaction?.status || "Pending",
+    defaultValues: transaction ? { 
+        ...transaction, 
+        date: new Date(transaction.date) 
+    } : {
+      id: "",
+      employeeId: "",
+      date: new Date(),
+      type: "Advance",
+      amount: 0,
+      description: "",
+      status: "Pending",
     },
   });
 
@@ -96,20 +101,50 @@ export function TransactionForm({ setDialogOpen, onSubmit, transaction, employee
             control={form.control}
             name="employeeId"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="flex flex-col">
                 <FormLabel>Employee</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select an employee" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {employees.map(employee => (
-                        <SelectItem key={employee.id} value={employee.id}>{employee.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        className={cn(
+                          "w-full justify-between",
+                          !field.value && "text-muted-foreground"
+                        )}
+                      >
+                        {field.value
+                          ? employees.find(
+                              (employee) => employee.id === field.value
+                            )?.name
+                          : "Select employee"}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0">
+                    <Command>
+                      <CommandInput placeholder="Search employee..." />
+                      <CommandList>
+                        <CommandEmpty>No employee found.</CommandEmpty>
+                        <CommandGroup>
+                          {employees.map((employee) => (
+                            <CommandItem
+                              value={employee.name}
+                              key={employee.id}
+                              onSelect={() => {
+                                form.setValue("employeeId", employee.id)
+                              }}
+                            >
+                              {employee.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
                 <FormMessage />
               </FormItem>
             )}
