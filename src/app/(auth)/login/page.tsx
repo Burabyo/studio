@@ -52,21 +52,28 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background p-4">
-       <div className="flex flex-col items-center text-center w-full">
-            <PaypulseIcon className="w-28 h-28 mb-8 text-primary"/>
-            <h1 className="text-6xl font-bold tracking-tight">Welcome to PayPulse</h1>
-            <p className="text-2xl text-muted-foreground mt-4 mb-10 max-w-lg">The simple, secure way to manage your company's payroll.</p>
-            <Tabs defaultValue="login" className="w-full max-w-xl">
+    <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
+      <div className="hidden bg-sidebar lg:flex flex-col items-center justify-center p-10 text-center text-sidebar-foreground">
+        <div className="flex flex-col items-center">
+            <PaypulseIcon className="w-32 h-32 mb-6 text-primary" />
+            <h1 className="text-5xl font-bold tracking-tight">Welcome to PayPulse</h1>
+            <p className="text-xl text-muted-foreground mt-4 max-w-md">The simple, secure, and intelligent way to manage your company's payroll.</p>
+        </div>
+        <div className="absolute bottom-10 text-sm text-muted-foreground">
+            &copy; {new Date().getFullYear()} PayPulse Inc. All Rights Reserved.
+        </div>
+      </div>
+      <div className="flex items-center justify-center min-h-screen bg-background p-6">
+            <Tabs defaultValue="login" className="w-full max-w-sm">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="login">Login</TabsTrigger>
                 <TabsTrigger value="signup">Sign Up</TabsTrigger>
               </TabsList>
               <TabsContent value="login">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Login</CardTitle>
-                    <CardDescription>Enter your credentials to access your account.</CardDescription>
+                <Card className="border-0 shadow-none">
+                  <CardHeader className="text-center">
+                    <CardTitle className="text-2xl">Login to your account</CardTitle>
+                    <CardDescription>Enter your credentials to access your dashboard.</CardDescription>
                   </CardHeader>
                    <form onSubmit={handleLogin}>
                     <CardContent className="space-y-4">
@@ -89,10 +96,10 @@ export default function LoginPage() {
                 </Card>
               </TabsContent>
               <TabsContent value="signup">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Sign Up</CardTitle>
-                    <CardDescription>Create a new account to get started.</CardDescription>
+                <Card className="border-0 shadow-none">
+                  <CardHeader className="text-center">
+                    <CardTitle className="text-2xl">Create an Account</CardTitle>
+                    <CardDescription>Get started by creating a new account.</CardDescription>
                   </CardHeader>
                   <form onSubmit={handleSignup}>
                     <CardContent className="space-y-4">
@@ -140,7 +147,7 @@ export default function LoginPage() {
                 </Card>
               </TabsContent>
             </Tabs>
-        </div>
+      </div>
     </div>
   );
 }
