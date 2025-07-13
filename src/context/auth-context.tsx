@@ -3,74 +3,131 @@
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+  getAuth,
+  onAuthStateChanged,
+  signOut,
+  User as FirebaseUser,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+} from 'firebase/auth';
+import { app } from '@/lib/firebase'; // We'll create this file
 
 export type UserRole = 'admin' | 'manager' | 'employee';
 
 interface User {
-  id: string;
+  uid: string;
+  email: string | null;
   name: string;
   role: UserRole;
-  employeeId?: string; // Link to employee data for 'employee' role
+  employeeId?: string; 
 }
-
-const SIMULATED_USERS: Record<UserRole, User> = {
-  admin: { id: 'user-admin', name: 'Admin User', role: 'admin' },
-  manager: { id: 'user-manager', name: 'Manager User', role: 'manager' },
-  employee: { id: 'user-employee-001', name: 'Alice Johnson', role: 'employee', employeeId: 'EMP001' },
-};
 
 interface AuthContextType {
   user: User | null;
-  login: (role: UserRole) => void;
-  logout: () => void;
+  firebaseUser: FirebaseUser | null;
   loading: boolean;
+  login: (email: string, pass: string) => Promise<any>;
+  signup: (email: string, pass: string, name: string, role: UserRole) => Promise<any>;
+  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// In a real app, you'd fetch this from a database (like Firestore) after login.
+// For this simulation, we'll store it in localStorage.
+const getRoleForUser = (uid: string): UserRole => {
+    try {
+        const storedData = localStorage.getItem(`userRole-${uid}`);
+        return storedData ? JSON.parse(storedData).role : 'employee'; // Default to 'employee'
+    } catch {
+        return 'employee';
+    }
+};
+
+const getNameForUser = (uid: string): string => {
+     try {
+        const storedData = localStorage.getItem(`userRole-${uid}`);
+        return storedData ? JSON.parse(storedData).name : 'New User';
+    } catch {
+        return 'New User';
+    }
+}
+
+const storeUserData = (uid: string, name: string, role: UserRole) => {
+    try {
+        localStorage.setItem(`userRole-${uid}`, JSON.stringify({ name, role }));
+    } catch (e) {
+        console.error("Could not access localStorage");
+    }
+}
+
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  
-  useEffect(() => {
-    // Simulate checking for a logged-in user in session storage
-    try {
-        const storedUserRole = sessionStorage.getItem('userRole');
-        if (storedUserRole && SIMULATED_USERS[storedUserRole as UserRole]) {
-            setUser(SIMULATED_USERS[storedUserRole as UserRole]);
-        }
-    } catch(e) {
-        console.error("Could not access session storage");
-    } finally {
-        setLoading(false);
-    }
-  }, []);
+  const auth = getAuth(app);
 
-  const login = (role: UserRole) => {
-    const userToLogin = SIMULATED_USERS[role];
-    if (userToLogin) {
-      setUser(userToLogin);
-      try {
-        sessionStorage.setItem('userRole', role);
-      } catch(e) {
-          console.error("Could not access session storage");
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
+      if (fbUser) {
+        setFirebaseUser(fbUser);
+        // Simulate fetching user profile from a database
+        const role = getRoleForUser(fbUser.uid);
+        const name = getNameForUser(fbUser.uid);
+
+        const appUser: User = {
+          uid: fbUser.uid,
+          email: fbUser.email,
+          name: name || fbUser.email || 'User',
+          role: role,
+          // In a real app, you'd fetch this from your DB
+          employeeId: role === 'employee' ? 'EMP001' : undefined,
+        };
+        setUser(appUser);
+      } else {
+        setUser(null);
+        setFirebaseUser(null);
       }
-    }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [auth]);
+
+  const login = async (email: string, pass: string) => {
+    setLoading(true);
+    return signInWithEmailAndPassword(auth, email, pass);
   };
+  
+  const signup = async (email: string, pass: string, name: string, role: UserRole) => {
+      setLoading(true);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+      // Store the name and role after successful creation
+      storeUserData(userCredential.user.uid, name, role);
+      // Manually set user for immediate UI update
+      const appUser: User = {
+        uid: userCredential.user.uid,
+        email: userCredential.user.email,
+        name: name,
+        role: role,
+        employeeId: role === 'employee' ? 'EMP001' : undefined,
+      };
+      setUser(appUser);
+      setFirebaseUser(userCredential.user);
+      return userCredential;
+  }
 
   const logout = () => {
-    setUser(null);
-    try {
-        sessionStorage.removeItem('userRole');
-    } catch(e) {
-        console.error("Could not access session storage");
-    }
-    router.push('/login');
+    signOut(auth).then(() => {
+      router.push('/login');
+    });
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, firebaseUser, loading, login, signup, logout }}>
       {children}
     </AuthContext.Provider>
   );

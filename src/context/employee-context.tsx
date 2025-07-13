@@ -21,6 +21,7 @@ export const EmployeeProvider = ({ children }: { children: ReactNode }) => {
   
   const visibleEmployees = React.useMemo(() => {
     if (user?.role === 'employee') {
+      // In a real app with real auth, we'd use user.uid to find the employee record
       return employees.filter(e => e.id === user.employeeId);
     }
     return employees;
@@ -28,6 +29,7 @@ export const EmployeeProvider = ({ children }: { children: ReactNode }) => {
 
 
   const addEmployee = (employee: Omit<Employee, 'id'>) => {
+    // This is a simplified way to generate an ID. In a real app, a database would handle this.
     const newEmployee = { ...employee, id: `EMP${(employees.length + 1).toString().padStart(3, '0')}` };
     setEmployees([...employees, newEmployee]);
   };

@@ -85,7 +85,7 @@ export function MainSidebar() {
              <SidebarMenuButton tooltip="Your Profile" className='justify-start'>
                 <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold">
-                        {user.name.charAt(0)}
+                        {user.name?.charAt(0) || 'U'}
                     </div>
                     <div className="flex flex-col items-start">
                         <span className="font-semibold">{user.name}</span>
