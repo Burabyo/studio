@@ -62,17 +62,13 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-muted/40 p-4">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">
       <div className="w-full max-w-md">
-         <div className="grid gap-2 text-center mb-6">
-            <div className="flex flex-col items-center justify-center">
-                <PaypulseIcon className="w-20 h-20 text-primary" />
-                <h1 className="text-3xl font-bold tracking-tight mt-4">Welcome to PayPulse</h1>
-                <p className="text-muted-foreground mt-2">
-                  {tagline}
-                </p>
-            </div>
-          </div>
+        <div className="flex flex-col items-center justify-center text-center mb-8">
+            <PaypulseIcon className="w-16 h-16 text-primary mb-4" />
+            <h1 className="text-3xl font-bold tracking-tight">Welcome to PayPulse</h1>
+            <p className="text-muted-foreground mt-2">{tagline}</p>
+        </div>
 
         <Tabs defaultValue="login" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
@@ -204,10 +200,11 @@ export default function LoginPage() {
             </Card>
           </TabsContent>
         </Tabs>
-        <p className="px-8 text-center text-sm text-muted-foreground mt-6">
-            PayPulse Inc. &copy; {new Date().getFullYear()}
-        </p>
       </div>
-    </div>
+
+       <footer className="absolute bottom-4 text-center text-sm text-muted-foreground">
+          PayPulse Inc. &copy; {new Date().getFullYear()}
+      </footer>
+    </main>
   );
 }
