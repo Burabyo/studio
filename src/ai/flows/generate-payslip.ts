@@ -24,6 +24,8 @@ const GeneratePayslipInputSchema = z.object({
   bankName: z.string().describe('The bank name of the employee.'),
   accountNumber: z.string().describe('The bank account number of the employee.'),
   recurringContributions: z.record(z.string(), z.number()).describe('A key-value object of recurring contributions (e.g., social security, health insurance) and their amounts.'),
+  currency: z.string().describe('The currency code for the amounts (e.g., USD, RWF).'),
+  currencySymbol: z.string().describe('The currency symbol (e.g., $, FRw).'),
 });
 
 export type GeneratePayslipInput = z.infer<typeof GeneratePayslipInputSchema>;
@@ -44,34 +46,35 @@ const prompt = ai.definePrompt({
   output: {schema: GeneratePayslipOutputSchema},
   prompt: `You are an expert HR assistant responsible for generating payslips for employees.
 
-  Generate a personalized payslip for the employee with the following information.  The payslip should be easy to read and understand.
+  Generate a personalized payslip for the employee with the following information. The payslip should be easy to read and understand. All monetary values should be prefixed with the currency symbol '{{{currencySymbol}}}'.
 
   Employee Name: {{{employeeName}}}
   Employee ID: {{{employeeId}}}
   Job Title: {{{jobTitle}}}
   Pay Period: {{{payPeriod}}}
-  Gross Pay: {{{grossPay}}}
+
+  Gross Pay: {{{currencySymbol}}}{{{grossPay}}}
 
   Allowances:
   {{#each allowances}}
-  - {{key}}: {{{this}}}
+  - {{key}}: {{{../currencySymbol}}}{{{this}}}
   {{/each}}
 
-Deductions:
+  Deductions:
   {{#each deductions}}
-  - {{key}}: {{{this}}}
+  - {{key}}: {{{../currencySymbol}}}{{{this}}}
   {{/each}}
 
-Taxes: {{{taxes}}}
-Net Pay: {{{netPay}}}
+  Recurring Contributions:
+  {{#each recurringContributions}}
+  - {{key}}: {{{../currencySymbol}}}{{{this}}}
+  {{/each}}
 
-Bank Name: {{{bankName}}}
-Account Number: {{{accountNumber}}}
+  Taxes: {{{currencySymbol}}}{{{taxes}}}
+  Net Pay: {{{currencySymbol}}}{{{netPay}}}
 
-Recurring Contributions:
-{{#each recurringContributions}}
-- {{key}}: {{{this}}}
-{{/each}}
+  Bank Name: {{{bankName}}}
+  Account Number: {{{accountNumber}}}
   `,
 });
 

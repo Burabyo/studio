@@ -1,9 +1,39 @@
+"use client";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Briefcase, Banknote, FileText } from "lucide-react";
 import { PayrollChart } from "./_components/payroll-chart";
-
+import { useEmployeeContext } from "@/context/employee-context";
+import { useTransactionContext } from "@/context/transaction-context";
+import { useCurrency } from "@/context/currency-context";
 
 export default function DashboardPage() {
+  const { employees } = useEmployeeContext();
+  const { transactions } = useTransactionContext();
+  const { formatCurrency } = useCurrency();
+
+  const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+  const currentMonthIndex = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+
+  const totalPayroll = employees.reduce((sum, emp) => {
+    if (emp.employmentType === 'Monthly Salary') {
+      return sum + emp.salary;
+    }
+    return sum;
+  }, 0);
+
+  const pendingAdvances = transactions.reduce((sum, t) => {
+    if (t.type === 'Advance' && t.status === 'Pending') {
+      return sum + t.amount;
+    }
+    return sum;
+  }, 0);
+  
+  const pendingAdvancesCount = transactions.filter(t => t.type === 'Advance' && t.status === 'Pending').length;
+
+  const payslipsGenerated = employees.length;
+
   return (
     <div className="flex flex-col gap-6">
       <header>
@@ -19,8 +49,8 @@ export default function DashboardPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">124</div>
-            <p className="text-xs text-muted-foreground">+5 since last month</p>
+            <div className="text-2xl font-bold">{employees.length}</div>
+            <p className="text-xs text-muted-foreground">managed in the system</p>
           </CardContent>
         </Card>
         <Card>
@@ -29,8 +59,8 @@ export default function DashboardPage() {
             <Banknote className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$150,231.89</div>
-            <p className="text-xs text-muted-foreground">June 2024</p>
+            <div className="text-2xl font-bold">{formatCurrency(totalPayroll)}</div>
+            <p className="text-xs text-muted-foreground">Monthly base salary total</p>
           </CardContent>
         </Card>
         <Card>
@@ -39,8 +69,8 @@ export default function DashboardPage() {
             <Briefcase className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$1,250.00</div>
-            <p className="text-xs text-muted-foreground">Across 5 employees</p>
+            <div className="text-2xl font-bold">{formatCurrency(pendingAdvances)}</div>
+            <p className="text-xs text-muted-foreground">Across {pendingAdvancesCount} employees</p>
           </CardContent>
         </Card>
         <Card>
@@ -49,8 +79,8 @@ export default function DashboardPage() {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">124</div>
-            <p className="text-xs text-muted-foreground">For June 2024</p>
+            <div className="text-2xl font-bold">{payslipsGenerated}</div>
+            <p className="text-xs text-muted-foreground">For {currentMonth}</p>
           </CardContent>
         </Card>
       </div>

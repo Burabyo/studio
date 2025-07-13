@@ -41,9 +41,11 @@ import { EmployeeForm } from "./employee-form";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { useEmployeeContext } from "@/context/employee-context";
+import { useCurrency } from "@/context/currency-context";
 
 export function EmployeeTable() {
   const { employees, addEmployee, editEmployee, deleteEmployee } = useEmployeeContext();
+  const { formatCurrency } = useCurrency();
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [selectedEmployee, setSelectedEmployee] = React.useState<Employee | null>(null);
 
@@ -138,8 +140,8 @@ export function EmployeeTable() {
                 </TableCell>
                 <TableCell className="text-right">
                   {employee.employmentType === 'Monthly Salary'
-                    ? `$${employee.salary.toLocaleString()}`
-                    : `$${employee.salary.toLocaleString()}/day`}
+                    ? formatCurrency(employee.salary)
+                    : `${formatCurrency(employee.salary)}/day`}
                 </TableCell>
                 <TableCell className="text-right">
                   <DropdownMenu>

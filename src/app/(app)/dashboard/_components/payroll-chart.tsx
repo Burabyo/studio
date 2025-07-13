@@ -7,6 +7,7 @@ import {
   ChartLegend,
   ChartLegendContent,
 } from "@/components/ui/chart";
+import { useCurrency } from "@/context/currency-context";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 
 const chartData = [
@@ -26,6 +27,7 @@ const chartConfig = {
 };
 
 export function PayrollChart() {
+  const { formatCurrency } = useCurrency();
   return (
     <ChartContainer config={chartConfig} className="h-[300px] w-full">
       <BarChart accessibilityLayer data={chartData}>
@@ -40,11 +42,15 @@ export function PayrollChart() {
           tickLine={false}
           axisLine={false}
           tickMargin={10}
-          tickFormatter={(value) => `$${value / 1000}K`}
+          tickFormatter={(value) => {
+             if (value >= 1000000) return `${formatCurrency(value / 1000000)}M`
+             if (value >= 1000) return `${formatCurrency(value / 1000)}K`
+             return formatCurrency(value)
+          }}
         />
         <ChartTooltip
           cursor={false}
-          content={<ChartTooltipContent indicator="dot" />}
+          content={<ChartTooltipContent indicator="dot" formatter={(value) => formatCurrency(Number(value))}/>}
         />
         <ChartLegend content={<ChartLegendContent />} />
         <Bar dataKey="payroll" fill="var(--color-payroll)" radius={4} />

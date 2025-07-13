@@ -1,4 +1,3 @@
-
 "use client";
 
 import { z } from "zod";
@@ -7,7 +6,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -31,6 +29,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { useCurrency } from "@/context/currency-context";
 
 const formSchema = z.object({
   id: z.string().optional(),
@@ -52,6 +51,7 @@ interface TransactionFormProps {
 }
 
 export function TransactionForm({ setDialogOpen, onSubmit, transaction, employees }: TransactionFormProps) {
+  const { currency } = useCurrency();
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: transaction ? { 
@@ -241,7 +241,7 @@ export function TransactionForm({ setDialogOpen, onSubmit, transaction, employee
             name="amount"
             render={({ field }) => (
               <FormItem className="md:col-span-2">
-                <FormLabel>Amount ($)</FormLabel>
+                <FormLabel>Amount ({currency})</FormLabel>
                 <FormControl>
                   <Input type="number" placeholder="500" {...field} />
                 </FormControl>

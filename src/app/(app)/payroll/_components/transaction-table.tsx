@@ -43,6 +43,7 @@ import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useEmployeeContext } from "@/context/employee-context";
 import { useTransactionContext } from "@/context/transaction-context";
+import { useCurrency } from "@/context/currency-context";
 
 const statusColors = {
   Pending: "bg-yellow-500 hover:bg-yellow-500/80",
@@ -54,6 +55,7 @@ const statusColors = {
 export function TransactionTable() {
   const { employees } = useEmployeeContext();
   const { transactions, addTransaction, editTransaction, deleteTransaction } = useTransactionContext();
+  const { formatCurrency } = useCurrency();
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [selectedTransaction, setSelectedTransaction] = React.useState<Transaction | null>(null);
 
@@ -152,7 +154,7 @@ export function TransactionTable() {
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                  ${transaction.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {formatCurrency(transaction.amount)}
                 </TableCell>
                 <TableCell className="text-right">
                   <DropdownMenu>

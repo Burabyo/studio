@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import type { Employee } from "@/lib/types";
 import React from "react";
+import { useCurrency } from "@/context/currency-context";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
@@ -42,6 +43,7 @@ interface EmployeeFormProps {
 }
 
 export function EmployeeForm({ setDialogOpen, onSubmit, employee }: EmployeeFormProps) {
+  const { currency } = useCurrency();
   const form = useForm<EmployeeFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -153,8 +155,8 @@ export function EmployeeForm({ setDialogOpen, onSubmit, employee }: EmployeeForm
               <FormItem>
                 <FormLabel>
                   {form.watch("employmentType") === "Monthly Salary"
-                    ? "Monthly Salary ($)"
-                    : "Daily Rate ($)"}
+                    ? `Monthly Salary (${currency})`
+                    : `Daily Rate (${currency})`}
                 </FormLabel>
                 <FormControl>
                   <Input type="number" placeholder="5000" {...field} />

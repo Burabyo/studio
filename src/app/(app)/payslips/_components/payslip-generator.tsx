@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { useEmployeeContext } from "@/context/employee-context";
 import { useTransactionContext } from "@/context/transaction-context";
 import { downloadPdf } from "@/lib/pdf";
+import { useCurrency } from "@/context/currency-context";
 
 const payslipSchema = z.object({
   employeeId: z.string({ required_error: "Please select an employee." }),
@@ -35,6 +36,7 @@ export function PayslipGenerator() {
   const [generatedPayslip, setGeneratedPayslip] = useState<string | null>(null);
   const { employees } = useEmployeeContext();
   const { transactions } = useTransactionContext();
+  const { currency, formatCurrency, getCurrencySymbol } = useCurrency();
 
   const form = useForm<PayslipFormValues>({
     resolver: zodResolver(payslipSchema),
@@ -78,6 +80,8 @@ export function PayslipGenerator() {
 
         const netPay = employee.salary + totalAllowances - totalDeductions - taxes - totalContributions;
 
+        const currencySymbol = getCurrencySymbol();
+
         const input = {
             employeeName: employee.name,
             employeeId: employee.id,
@@ -91,6 +95,8 @@ export function PayslipGenerator() {
             netPay,
             bankName: employee.bankName,
             accountNumber: employee.accountNumber,
+            currency: currency,
+            currencySymbol: currencySymbol,
         }
 
         const result = await generatePayslip(input);
