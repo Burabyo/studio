@@ -1,4 +1,5 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
 
 // Helper function to clean up environment variables
 const cleanVar = (variable: string | undefined): string => {
@@ -26,3 +27,4 @@ if (!firebaseConfig.apiKey) {
 
 // Initialize Firebase
 export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+export const db = getFirestore(app);
