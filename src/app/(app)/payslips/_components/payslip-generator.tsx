@@ -1,47 +1,30 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, Sparkles, FileText, ChevronsUpDown, Printer, Download } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { generatePayslip } from "@/ai/flows/generate-payslip";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth, UserRole } from "@/context/auth-context";
+import { useRouter } from "next/navigation";
+import { PaypulseIcon } from "@/components/icons";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
-import { useEmployeeContext } from "@/context/employee-context";
-import { useTransactionContext } from "@/context/transaction-context";
-import { downloadPdf } from "@/lib/pdf";
-import { useCurrency } from "@/context/currency-context";
-import { useAuth } from "@/context/auth-context";
-import type { Employee } from "@/lib/types";
+import { Loader2, Eye, EyeOff } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
-const payslipSchema = z.object({
-  employeeId: z.string({ required_error: "Please select an employee." }),
-});
+const tagline = "The simple, secure, and intelligent way to manage your payroll.";
 
-type PayslipFormValues = z.infer<typeof payslipSchema>;
+export default function LoginPage() {
+  const { signup, login, loading } = useAuth();
+  const router = useRouter();
 
-export function PayslipGenerator() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [generatedPayslip, setGeneratedPayslip] = useState<string | null>(null);
-  const { employees } = useEmployeeContext();
-  const { transactions } = useTransactionContext();
-  const { currency, getCurrencySymbol, taxRate, recurringContributions: globalContributions, payslipInfo } = useCurrency();
-  const { user } = useAuth();
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
 
+<<<<<<< HEAD
   const form = useForm<PayslipFormValues>({
     resolver: zodResolver(payslipSchema),
     defaultValues: {
@@ -57,107 +40,47 @@ export function PayslipGenerator() {
     // If user is an employee, auto-select them.
     if (user?.role === 'employee' && user.employeeId) {
         form.setValue('employeeId', user.employeeId, { shouldValidate: true });
+=======
+  const [signupEmail, setSignupEmail] = useState("");
+  const [signupPassword, setSignupPassword] = useState("");
+  const [signupConfirmPassword, setSignupConfirmPassword] = useState("");
+  const [signupName, setSignupName] = useState("");
+  const [signupRole, setSignupRole] = useState<UserRole>("admin");
+  const [showSignupPassword, setShowSignupPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await login(loginEmail, loginPassword);
+      router.push('/dashboard');
+      toast({ title: "Login Successful", description: "Welcome back!" });
+    } catch (error: any) {
+      const errorMessage = error.code ? error.code.replace('auth/', '').replace(/-/g, ' ') : 'An unknown error occurred.';
+      toast({ variant: "destructive", title: "Login Failed", description: `Error: ${errorMessage}` });
+>>>>>>> a7ba1a9385b7eeba3b4ad085aa31d5684f01cffc
     }
-  }, [user, form]);
-
-  async function onSubmit(data: PayslipFormValues) {
-    setIsLoading(true);
-    setGeneratedPayslip(null);
-
-    const employee = employees.find(e => e.id === data.employeeId);
-    if (!employee) {
-        toast({
-            variant: "destructive",
-            title: "Employee not found",
-            description: "Could not find the selected employee's details.",
-        });
-        setIsLoading(false);
-        return;
+  };
+  
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (signupPassword !== signupConfirmPassword) {
+      toast({ variant: "destructive", title: "Sign-up Failed", description: "Passwords do not match." });
+      return;
     }
 
     try {
-        const currentMonth = new Date().getMonth();
-        const currentYear = new Date().getUTCFullYear();
-        const employeeTransactions = transactions.filter(t => 
-            t.employeeId === employee.id && 
-            new Date(t.date).getMonth() === currentMonth &&
-            new Date(t.date).getFullYear() === currentYear &&
-            (t.status === 'Approved' || t.status === 'Paid')
-        );
-
-        const allowances = employeeTransactions.filter(t => t.type === 'Bonus').reduce((acc, t) => ({...acc, [t.description]: t.amount}), {});
-        const deductions = employeeTransactions.filter(t => t.type === 'Deduction' || t.type === 'Loan' || t.type === 'Advance').reduce((acc, t) => ({...acc, [t.description]: t.amount}), {});
-        
-        const taxes = employee.salary * (taxRate / 100); 
-        const recurringContributions = globalContributions.reduce((acc, contribution) => {
-            acc[contribution.name] = employee.salary * (contribution.percentage / 100);
-            return acc;
-        }, {} as Record<string, number>);
-
-        const totalAllowances = Object.values(allowances).reduce((sum: number, amount) => sum + (amount as number), 0);
-        const totalDeductions = Object.values(deductions).reduce((sum: number, amount) => sum + (amount as number), 0);
-        const totalContributions = Object.values(recurringContributions).reduce((sum, amount) => sum + amount, 0);
-
-        const netPay = employee.salary + totalAllowances - totalDeductions - taxes - totalContributions;
-
-        const currencySymbol = getCurrencySymbol();
-
-        const input = {
-            companyName: payslipInfo.companyName,
-            companyTagline: payslipInfo.companyTagline,
-            companyContact: payslipInfo.companyContact,
-            employeeName: employee.name,
-            employeeId: employee.id,
-            jobTitle: employee.jobTitle,
-            payPeriod: new Date().toLocaleString('default', { month: 'long', year: 'numeric' }),
-            grossPay: employee.salary,
-            allowances,
-            deductions,
-            taxes,
-            recurringContributions,
-            netPay,
-            bankName: employee.bankName,
-            accountNumber: employee.accountNumber,
-            currency: currency,
-            currencySymbol: currencySymbol,
-        }
-
-        const result = await generatePayslip(input);
-        setGeneratedPayslip(result.payslip);
-
-    } catch (error) {
-      console.error("Error generating payslip:", error);
-      toast({
-        variant: "destructive",
-        title: "Generation Failed",
-        description: "An error occurred while generating the payslip.",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  const handlePrint = () => {
-    const printWindow = window.open('', '', 'height=800,width=800');
-    if (printWindow) {
-      printWindow.document.write('<html><head><title>Payslip</title>');
-      printWindow.document.write('<style>body { font-family: monospace; } pre { white-space: pre-wrap; }</style>');
-      printWindow.document.write('</head><body>');
-      printWindow.document.write(`<pre>${generatedPayslip}</pre>`);
-      printWindow.document.write('</body></html>');
-      printWindow.document.close();
-      printWindow.print();
-    }
-  };
-
-  const handleDownload = () => {
-    const employee = employees.find(e => e.id === form.getValues("employeeId"));
-    if (generatedPayslip && employee) {
-      downloadPdf(generatedPayslip, `payslip-${employee.id}-${new Date().toISOString().split('T')[0]}.pdf`);
+      await signup(signupEmail, signupPassword, signupName, signupRole);
+      router.push('/dashboard');
+      toast({ title: "Account Created", description: "Welcome to PayPulse!" });
+    } catch (error: any) {
+       const errorMessage = error.code ? error.code.replace('auth/', '').replace(/-/g, ' ') : 'An unknown error occurred.';
+       toast({ variant: "destructive", title: "Sign-up Failed", description: `Error: ${errorMessage}. Please check your details.` });
     }
   };
 
   return (
+<<<<<<< HEAD
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
       <Card>
         <CardHeader>
@@ -231,42 +154,158 @@ export function PayslipGenerator() {
           </Form>
         </CardContent>
       </Card>
+=======
+    <div className="flex flex-col items-center justify-center min-h-screen bg-background p-6">
+      <div className="w-full max-w-lg text-center">
+        <div className="flex flex-col items-center justify-center mb-6">
+          <PaypulseIcon className="w-20 h-20 text-primary" />
+          <h1 className="text-4xl font-bold tracking-tight mt-4">Welcome to PayPulse</h1>
+            <p className="text-muted-foreground mt-2 h-10">
+              {tagline}
+            </p>
+        </div>
+>>>>>>> a7ba1a9385b7eeba3b4ad085aa31d5684f01cffc
 
-      <Card className="lg:sticky top-6">
-        <CardHeader>
-          <CardTitle>Generated Payslip</CardTitle>
-        </CardHeader>
-        <CardContent className="min-h-[400px]">
-          {isLoading && (
-            <div className="flex flex-col items-center justify-center h-full">
-              <Loader2 className="h-16 w-16 animate-spin text-primary" />
-              <p className="mt-4 text-muted-foreground">Generating your payslip...</p>
-            </div>
-          )}
-          {generatedPayslip && (
-            <div>
-                 <pre className="whitespace-pre-wrap font-sans text-sm bg-muted p-4 rounded-lg">{generatedPayslip}</pre>
-                 <div className="flex gap-2 mt-4">
-                    <Button onClick={handleDownload} className="w-full">
-                        <Download className="mr-2 h-4 w-4" />
-                        Download PDF
-                    </Button>
-                     <Button onClick={handlePrint} variant="outline" className="w-full">
-                        <Printer className="mr-2 h-4 w-4" />
-                        Print
-                    </Button>
-                 </div>
-            </div>
-          )}
-           {!isLoading && !generatedPayslip && (
-            <div className="flex flex-col items-center justify-center h-full text-center">
-              <FileText className="h-16 w-16 text-muted" />
-              <p className="mt-4 text-muted-foreground">Your generated payslip will appear here.</p>
-              <p className="text-sm text-muted-foreground">Select an employee and click "Generate with AI".</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        <Tabs defaultValue="login" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="login">Login</TabsTrigger>
+            <TabsTrigger value="signup">Sign Up</TabsTrigger>
+          </TabsList>
+          <TabsContent value="login">
+            <Card className="border-0 shadow-none">
+              <CardHeader>
+                <CardTitle className="text-2xl font-normal">Login to your account</CardTitle>
+              </CardHeader>
+              <form onSubmit={handleLogin}>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2 text-left">
+                    <Label htmlFor="login-email">Email</Label>
+                    <Input id="login-email" type="email" placeholder="m@example.com" required value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} />
+                  </div>
+                  <div className="space-y-2 text-left">
+                    <Label htmlFor="login-password">Password</Label>
+                    <div className="relative">
+                      <Input 
+                        id="login-password" 
+                        type={showLoginPassword ? "text" : "password"}
+                        required 
+                        value={loginPassword} 
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:bg-transparent"
+                        onClick={() => setShowLoginPassword(prev => !prev)}
+                      >
+                        {showLoginPassword ? <EyeOff /> : <Eye />}
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Sign In
+                  </Button>
+                </CardFooter>
+              </form>
+            </Card>
+          </TabsContent>
+          <TabsContent value="signup">
+            <Card className="border-0 shadow-none">
+              <CardHeader>
+                <CardTitle className="text-2xl font-normal">Create an Account</CardTitle>
+              </CardHeader>
+              <form onSubmit={handleSignup}>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2 text-left">
+                    <Label htmlFor="signup-name">Full Name</Label>
+                    <Input id="signup-name" type="text" placeholder="John Doe" required value={signupName} onChange={(e) => setSignupName(e.target.value)}/>
+                  </div>
+                  <div className="space-y-2 text-left">
+                    <Label htmlFor="signup-email">Email</Label>
+                    <Input id="signup-email" type="email" placeholder="m@example.com" required value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)}/>
+                  </div>
+                  <div className="space-y-2 text-left">
+                    <Label htmlFor="signup-password">Password</Label>
+                     <div className="relative">
+                      <Input 
+                        id="signup-password" 
+                        type={showSignupPassword ? "text" : "password"}
+                        required 
+                        value={signupPassword} 
+                        onChange={(e) => setSignupPassword(e.target.value)}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:bg-transparent"
+                        onClick={() => setShowSignupPassword(prev => !prev)}
+                      >
+                        {showSignupPassword ? <EyeOff /> : <Eye />}
+                      </Button>
+                    </div>
+                  </div>
+                   <div className="space-y-2 text-left">
+                    <Label htmlFor="signup-confirm-password">Confirm Password</Label>
+                     <div className="relative">
+                      <Input 
+                        id="signup-confirm-password" 
+                        type={showConfirmPassword ? "text" : "password"}
+                        required 
+                        value={signupConfirmPassword} 
+                        onChange={(e) => setSignupConfirmPassword(e.target.value)}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:bg-transparent"
+                        onClick={() => setShowConfirmPassword(prev => !prev)}
+                      >
+                        {showConfirmPassword ? <EyeOff /> : <Eye />}
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-2 text-left">
+                    <Label>Role</Label>
+                    <RadioGroup 
+                      defaultValue={signupRole} 
+                      onValueChange={(value) => setSignupRole(value as UserRole)}
+                      className="flex items-center space-x-4 pt-2"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="admin" id="admin" />
+                        <Label htmlFor="admin">Admin</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="manager" id="manager" />
+                        <Label htmlFor="manager">Manager</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="employee" id="employee" />
+                        <Label htmlFor="employee">Employee</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Create Account
+                  </Button>
+                </CardFooter>
+              </form>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+      <div className="absolute bottom-5 text-sm text-muted-foreground">
+        &copy; {new Date().getFullYear()} PayPulse Inc. All Rights Reserved.
+      </div>
     </div>
   );
 }
