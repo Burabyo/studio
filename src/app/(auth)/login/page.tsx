@@ -16,6 +16,8 @@ export default function LoginPage() {
   const { signup, login, loading } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("login");
+  const [activeSignupTab, setActiveSignupTab] = useState("signupAdmin");
+
 
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -30,9 +32,6 @@ export default function LoginPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [employeeId, setEmployeeId] = useState("");
   
-  // 'admin' for the company signup form, 'employee' for the user linking form.
-  const signupType = activeTab === 'signupAdmin' ? 'admin' : 'employee';
-
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,24 +53,23 @@ export default function LoginPage() {
     }
 
     try {
-      if (signupType === 'admin') {
-         await signup({
-          email: signupEmail, 
-          password: signupPassword, 
-          name: signupName, 
-          role: 'admin',
-          companyName: signupCompanyName,
-        });
+      let roleToSignup: UserRole;
+      if (activeSignupTab === 'signupAdmin') {
+        roleToSignup = 'admin';
+      } else if (activeSignupTab === 'signupManager') {
+        roleToSignup = 'manager';
       } else {
-        // For employee/manager, the role is determined by their record in the database.
-        await signup({
-          email: signupEmail,
-          password: signupPassword,
-          name: signupName,
-          role: 'employee', // This is a placeholder; the backend determines the actual role.
-          employeeId: employeeId,
-        });
+        roleToSignup = 'employee';
       }
+
+      await signup({
+        email: signupEmail,
+        password: signupPassword,
+        name: signupName,
+        role: roleToSignup, 
+        companyName: signupCompanyName,
+        employeeId: employeeId,
+      });
      
       router.push('/dashboard');
       toast({ title: "Account Created", description: "Welcome to PayPulse!" });
@@ -143,10 +141,11 @@ export default function LoginPage() {
                         </form>
                     </TabsContent>
                     <TabsContent value="signup">
-                        <Tabs defaultValue="signupAdmin" className="w-full" onValueChange={setActiveTab}>
-                             <TabsList className="grid w-full grid-cols-2">
-                                <TabsTrigger value="signupAdmin">Create a Company</TabsTrigger>
-                                <TabsTrigger value="signupEmployee">Join a Company</TabsTrigger>
+                        <Tabs defaultValue="signupAdmin" className="w-full" onValueChange={setActiveSignupTab}>
+                             <TabsList className="grid w-full grid-cols-3">
+                                <TabsTrigger value="signupAdmin">Create Company</TabsTrigger>
+                                <TabsTrigger value="signupManager">Join as Manager</TabsTrigger>
+                                <TabsTrigger value="signupEmployee">Join as Employee</TabsTrigger>
                             </TabsList>
                              <TabsContent value="signupAdmin">
                                 <form onSubmit={handleSignup} className="space-y-6 pt-6">
@@ -211,10 +210,73 @@ export default function LoginPage() {
                                     </Button>
                                 </form>
                             </TabsContent>
+                             <TabsContent value="signupManager">
+                                 <form onSubmit={handleSignup} className="space-y-6 pt-6">
+                                    <div className="text-center">
+                                        <h2 className="text-2xl font-bold tracking-tight">Join as a Manager</h2>
+                                        <p className="text-muted-foreground">Sign up using the Employee ID from your administrator.</p>
+                                    </div>
+                                    <div className="grid gap-4">
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="signup-employee-id-manager">Employee ID</Label>
+                                            <Input 
+                                                id="signup-employee-id-manager" 
+                                                type="text" 
+                                                placeholder="Your unique employee ID" 
+                                                required 
+                                                value={employeeId} 
+                                                onChange={(e) => setEmployeeId(e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="signup-name-manager">Full Name</Label>
+                                            <Input id="signup-name-manager" type="text" placeholder="Jane Smith" required value={signupName} onChange={(e) => setSignupName(e.target.value)}/>
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="signup-email-manager">Email</Label>
+                                            <Input id="signup-email-manager" type="email" placeholder="manager@example.com" required value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)}/>
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="signup-password-manager">Password</Label>
+                                             <div className="relative">
+                                                <Input 
+                                                    id="signup-password-manager" 
+                                                    type={showSignupPassword ? "text" : "password"}
+                                                    required 
+                                                    value={signupPassword} 
+                                                    onChange={(e) => setSignupPassword(e.target.value)}
+                                                />
+                                                <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:bg-transparent" onClick={() => setShowSignupPassword(prev => !prev)}>
+                                                    {showSignupPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                </Button>
+                                            </div>
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="signup-confirm-password-manager">Confirm Password</Label>
+                                            <div className="relative">
+                                                <Input 
+                                                    id="signup-confirm-password-manager" 
+                                                    type={showConfirmPassword ? "text" : "password"}
+                                                    required 
+                                                    value={signupConfirmPassword} 
+                                                    onChange={(e) => setSignupConfirmPassword(e.target.value)}
+                                                />
+                                                <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:bg-transparent" onClick={() => setShowConfirmPassword(prev => !prev)}>
+                                                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <Button type="submit" className="w-full" disabled={loading}>
+                                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        Join Company as Manager
+                                    </Button>
+                                </form>
+                            </TabsContent>
                              <TabsContent value="signupEmployee">
                                  <form onSubmit={handleSignup} className="space-y-6 pt-6">
                                     <div className="text-center">
-                                        <h2 className="text-2xl font-bold tracking-tight">Join your Company</h2>
+                                        <h2 className="text-2xl font-bold tracking-tight">Join as an Employee</h2>
                                         <p className="text-muted-foreground">Sign up using the Employee ID from your administrator.</p>
                                     </div>
                                     <div className="grid gap-4">
@@ -270,7 +332,7 @@ export default function LoginPage() {
                                     </div>
                                     <Button type="submit" className="w-full" disabled={loading}>
                                         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        Join Company
+                                        Join Company as Employee
                                     </Button>
                                 </form>
                             </TabsContent>

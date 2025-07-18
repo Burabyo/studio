@@ -30,9 +30,9 @@ interface SignupParams {
     email: string;
     password: string;
     name: string;
-    role: 'admin' | 'employee'; // This indicates which form is being used.
-    companyName?: string; // For new admins creating a company
-    employeeId?: string; // For employees/managers linking to a record
+    role: UserRole;
+    companyName?: string; 
+    employeeId?: string; 
 }
 
 interface AuthContextType {
@@ -100,11 +100,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const batch = writeBatch(db);
 
       let companyId: string;
-      let finalRole: UserRole;
       
       if (role === 'admin') {
         if (!companyName) throw new Error("Company name is required for admin sign-up.");
-        finalRole = 'admin';
         
         const newCompanyRef = doc(collection(db, "companies"));
         companyId = newCompanyRef.id;
@@ -126,7 +124,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         batch.set(newCompanyRef, companyData);
       }
       else { // 'employee' or 'manager' signup flow
-        if (!employeeId) throw new Error("Employee ID is required for employee sign-up.");
+        if (!employeeId) throw new Error("Employee ID is required to join a company.");
         
         const employeeQuery = query(
             collectionGroup(db, 'employees'), 
@@ -143,6 +141,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         const employeeDoc = employeeQuerySnapshot.docs[0];
         const foundEmployeeRecord = { id: employeeDoc.id, ...employeeDoc.data() } as Employee;
+        
+        // Validate that the user is signing up for the correct role.
+        if (foundEmployeeRecord.role !== role) {
+            await fbUser.delete();
+            throw new Error(`Your assigned role is '${foundEmployeeRecord.role}'. Please use the correct sign-up form.`);
+        }
+
         const foundCompanyId = employeeDoc.ref.parent.parent!.id; 
 
         const usersQuery = query(collection(db, "users"), where("employeeId", "==", employeeId), where("companyId", "==", foundCompanyId), limit(1));
@@ -153,19 +158,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
         
         companyId = foundCompanyId;
-        // This is the crucial fix: get the role from the employee record
-        finalRole = foundEmployeeRecord.role; 
       }
 
       const userProfileData: any = {
         uid: fbUser.uid,
         name,
         email,
-        role: finalRole,
-        companyId: companyId!,
+        role: role, // Use the role from the form ('admin', 'manager', or 'employee')
+        companyId: companyId,
       };
 
-      if (finalRole !== 'admin' && employeeId) {
+      if (role !== 'admin' && employeeId) {
         userProfileData.employeeId = employeeId;
       }
       
@@ -178,8 +181,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         uid: fbUser.uid,
         email: fbUser.email,
         name: name,
-        role: finalRole,
-        companyId: companyId!,
+        role: role,
+        companyId: companyId,
         employeeId: userProfileData.employeeId,
       };
       setUser(appUser);
