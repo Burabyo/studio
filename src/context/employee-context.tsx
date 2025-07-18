@@ -4,12 +4,12 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import type { Employee } from '@/lib/types';
 import { useAuth } from './auth-context';
-import { collection, onSnapshot, addDoc, updateDoc, doc, deleteDoc, setDoc } from "firebase/firestore";
+import { collection, onSnapshot, doc, deleteDoc, setDoc, updateDoc } from "firebase/firestore";
 import { db } from '@/lib/firebase';
 
 interface EmployeeContextType {
   employees: Employee[];
-  addEmployee: (employee: Omit<Employee, 'id'>) => Promise<void>;
+  addEmployee: (employee: Employee) => Promise<void>;
   editEmployee: (employee: Employee) => Promise<void>;
   deleteEmployee: (id: string) => Promise<void>;
   loading: boolean;
@@ -48,22 +48,26 @@ export const EmployeeProvider = ({ children }: { children: ReactNode }) => {
   }, [user]);
 
 
-  const addEmployee = async (employeeData: Omit<Employee, 'id'>) => {
+  const addEmployee = async (employeeData: Employee) => {
     try {
+        const { id, ...data } = employeeData;
         // Use setDoc with a specific ID to prevent duplicates
-        const employeeRef = doc(db, "employees", employeeData.id);
-        await setDoc(employeeRef, employeeData);
+        const employeeRef = doc(db, "employees", id);
+        await setDoc(employeeRef, data);
     } catch (error) {
         console.error("Error adding employee: ", error);
+        throw error;
     }
   };
 
   const editEmployee = async (updatedEmployee: Employee) => {
     try {
-        const employeeRef = doc(db, "employees", updatedEmployee.id);
-        await updateDoc(employeeRef, updatedEmployee);
+        const { id, ...data } = updatedEmployee;
+        const employeeRef = doc(db, "employees", id);
+        await updateDoc(employeeRef, data);
     } catch (error) {
         console.error("Error updating employee: ", error);
+        throw error;
     }
   };
 
@@ -73,6 +77,7 @@ export const EmployeeProvider = ({ children }: { children: ReactNode }) => {
         await deleteDoc(employeeRef);
     } catch (error) {
         console.error("Error deleting employee: ", error);
+        throw error;
     }
   };
 

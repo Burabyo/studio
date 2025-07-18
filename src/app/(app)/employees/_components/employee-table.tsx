@@ -52,32 +52,56 @@ export function EmployeeTable() {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [selectedEmployee, setSelectedEmployee] = React.useState<Employee | null>(null);
 
-  const handleAddEmployee = async (employee: Omit<Employee, 'id'>) => {
-    await addEmployee(employee);
-    toast({
-      title: "Employee Added",
-      description: `${employee.name} has been successfully added.`,
-    });
-    setIsDialogOpen(false);
+  const handleAddEmployee = async (employee: Employee) => {
+    try {
+      await addEmployee(employee);
+      toast({
+        title: "Employee Added",
+        description: `${employee.name} has been successfully added.`,
+      });
+      setIsDialogOpen(false);
+    } catch (error) {
+       toast({
+        title: "Error",
+        description: "Could not add employee. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
   
   const handleEditEmployee = async (employee: Employee) => {
-    await editEmployee(employee);
-    toast({
-        title: "Employee Updated",
-        description: `${employee.name}'s details have been updated.`,
-    });
-    setIsDialogOpen(false);
-    setSelectedEmployee(null);
+    try {
+      await editEmployee(employee);
+      toast({
+          title: "Employee Updated",
+          description: `${employee.name}'s details have been updated.`,
+      });
+      setIsDialogOpen(false);
+      setSelectedEmployee(null);
+    } catch (error) {
+       toast({
+        title: "Error",
+        description: "Could not update employee. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleDeleteEmployee = async (employeeId: string) => {
-    await deleteEmployee(employeeId);
-     toast({
-      title: "Employee Deleted",
-      description: `Employee has been removed from the system.`,
-      variant: "destructive"
-    });
+    try {
+      await deleteEmployee(employeeId);
+      toast({
+        title: "Employee Deleted",
+        description: `Employee has been removed from the system.`,
+        variant: "destructive"
+      });
+    } catch (error) {
+       toast({
+        title: "Error",
+        description: "Could not delete employee. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const openEditDialog = (employee: Employee) => {
