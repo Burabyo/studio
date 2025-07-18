@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Pencil, Trash2, PlusCircle } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2, PlusCircle, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
@@ -46,14 +46,14 @@ import { useCurrency } from "@/context/currency-context";
 import { useAuth } from "@/context/auth-context";
 
 export function EmployeeTable() {
-  const { employees, addEmployee, editEmployee, deleteEmployee } = useEmployeeContext();
+  const { employees, addEmployee, editEmployee, deleteEmployee, loading } = useEmployeeContext();
   const { formatCurrency } = useCurrency();
   const { user } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [selectedEmployee, setSelectedEmployee] = React.useState<Employee | null>(null);
 
-  const handleAddEmployee = (employee: Omit<Employee, 'id'>) => {
-    addEmployee(employee);
+  const handleAddEmployee = async (employee: Omit<Employee, 'id'>) => {
+    await addEmployee(employee);
     toast({
       title: "Employee Added",
       description: `${employee.name} has been successfully added.`,
@@ -61,8 +61,8 @@ export function EmployeeTable() {
     setIsDialogOpen(false);
   };
   
-  const handleEditEmployee = (employee: Employee) => {
-    editEmployee(employee);
+  const handleEditEmployee = async (employee: Employee) => {
+    await editEmployee(employee);
     toast({
         title: "Employee Updated",
         description: `${employee.name}'s details have been updated.`,
@@ -71,8 +71,8 @@ export function EmployeeTable() {
     setSelectedEmployee(null);
   };
 
-  const handleDeleteEmployee = (employeeId: string) => {
-    deleteEmployee(employeeId);
+  const handleDeleteEmployee = async (employeeId: string) => {
+    await deleteEmployee(employeeId);
      toast({
       title: "Employee Deleted",
       description: `Employee has been removed from the system.`,
@@ -135,7 +135,20 @@ export function EmployeeTable() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {employees.map((employee) => (
+            {loading ? (
+                <TableRow>
+                    <TableCell colSpan={canManage ? 6 : 5} className="h-24 text-center">
+                       <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
+                    </TableCell>
+                </TableRow>
+            ) : employees.length === 0 ? (
+                <TableRow>
+                    <TableCell colSpan={canManage ? 6 : 5} className="h-24 text-center">
+                        No employees found. Add one to get started.
+                    </TableCell>
+                </TableRow>
+            ) : (
+                employees.map((employee) => (
               <TableRow key={employee.id}>
                 <TableCell className="font-medium">{employee.id}</TableCell>
                 <TableCell>{employee.name}</TableCell>
@@ -193,7 +206,7 @@ export function EmployeeTable() {
                   </TableCell>
                 )}
               </TableRow>
-            ))}
+            )))}
           </TableBody>
         </Table>
       </CardContent>

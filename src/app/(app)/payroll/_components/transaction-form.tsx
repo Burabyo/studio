@@ -1,3 +1,4 @@
+
 "use client";
 
 import { z } from "zod";
@@ -22,9 +23,9 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { Transaction, Employee } from "@/lib/types";
-import React from "react";
+import React, { useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, ChevronsUpDown } from "lucide-react";
+import { CalendarIcon, ChevronsUpDown, Loader2 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -45,13 +46,14 @@ type TransactionFormValues = z.infer<typeof formSchema>;
 
 interface TransactionFormProps {
     setDialogOpen: (open: boolean) => void;
-    onSubmit: (values: any) => void;
+    onSubmit: (values: any) => Promise<void>;
     transaction?: Transaction | null;
     employees: Employee[];
 }
 
 export function TransactionForm({ setDialogOpen, onSubmit, transaction, employees }: TransactionFormProps) {
   const { currency } = useCurrency();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: transaction ? { 
@@ -83,14 +85,16 @@ export function TransactionForm({ setDialogOpen, onSubmit, transaction, employee
     });
   }, [transaction, form]);
 
-  const handleSubmit = (values: TransactionFormValues) => {
+  const handleSubmit = async (values: TransactionFormValues) => {
+    setIsSubmitting(true);
     const selectedEmployee = employees.find(e => e.id === values.employeeId);
-    onSubmit({
-      id: transaction?.id || '',
+    await onSubmit({
+      id: transaction?.id || undefined, // Pass undefined for new transactions
       ...values,
       date: format(values.date, 'yyyy-MM-dd'),
       employeeName: selectedEmployee?.name || 'Unknown Employee',
     });
+    setIsSubmitting(false);
   };
 
   return (
@@ -264,8 +268,11 @@ export function TransactionForm({ setDialogOpen, onSubmit, transaction, employee
           />
         </div>
         <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button type="submit">{transaction ? 'Save Changes' : 'Add Transaction'}</Button>
+            <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={isSubmitting}>Cancel</Button>
+            <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {transaction ? 'Save Changes' : 'Add Transaction'}
+            </Button>
         </div>
       </form>
     </Form>

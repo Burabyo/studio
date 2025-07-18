@@ -1,76 +1,80 @@
 
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import type { Transaction } from '@/lib/types';
-import { transactions as initialTransactions } from '@/app/(app)/payroll/data';
-import { useEmployeeContext } from './employee-context';
 import { useAuth } from './auth-context';
+import { collection, onSnapshot, addDoc, updateDoc, doc, deleteDoc } from "firebase/firestore";
+import { db } from '@/lib/firebase';
 
 interface TransactionContextType {
   transactions: Transaction[];
-  addTransaction: (transaction: Omit<Transaction, 'id'>) => void;
-  editTransaction: (transaction: Transaction) => void;
-  deleteTransaction: (id: string) => void;
+  addTransaction: (transaction: Omit<Transaction, 'id'>) => Promise<void>;
+  editTransaction: (transaction: Transaction) => Promise<void>;
+  deleteTransaction: (id: string) => Promise<void>;
+  loading: boolean;
 }
 
 const TransactionContext = createContext<TransactionContextType | undefined>(undefined);
 
 export const TransactionProvider = ({ children }: { children: ReactNode }) => {
-  const { employees } = useEmployeeContext();
   const { user } = useAuth();
-  const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    return initialTransactions.map(t => {
-      const employee = employees.find(e => e.id === t.employeeId);
-      return { ...t, employeeName: employee?.name || 'Unknown Employee' };
-    });
-  });
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const visibleTransactions = React.useMemo(() => {
-    if (user?.role === 'employee') {
-        return transactions.filter(t => t.employeeId === user.employeeId);
+  useEffect(() => {
+    if (!user) {
+        setTransactions([]);
+        setLoading(false);
+        return;
     }
-    return transactions;
-  }, [user, transactions]);
 
-  const addTransaction = (transaction: Omit<Transaction, 'id' | 'employeeName'> & { employeeId: string }) => {
-    const employee = employees.find(e => e.id === transaction.employeeId);
-    const newTransaction = { 
-        ...transaction, 
-        id: `TRN${(transactions.length + 1).toString().padStart(3, '0')}`,
-        employeeName: employee?.name || 'Unknown Employee',
-    };
-    setTransactions([...transactions, newTransaction]);
-  };
-
-  const editTransaction = (updatedTransaction: Transaction) => {
-    const employee = employees.find(e => e.id === updatedTransaction.employeeId);
-    const transactionWithCorrectName = {
-      ...updatedTransaction,
-      employeeName: employee?.name || 'Unknown Employee',
-    }
-    setTransactions(transactions.map(t => (t.id === updatedTransaction.id ? transactionWithCorrectName : t)));
-  };
-
-  const deleteTransaction = (id: string) => {
-    setTransactions(transactions.filter(t => t.id !== id));
-  };
-
-  React.useEffect(() => {
-    setTransactions(currentTransactions => {
-      return currentTransactions.map(t => {
-        const employee = employees.find(e => e.id === t.employeeId);
-        if (employee && t.employeeName !== employee.name) {
-          return { ...t, employeeName: employee.name };
+    setLoading(true);
+    const unsubscribe = onSnapshot(collection(db, "transactions"), (snapshot) => {
+        const transactionsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
+        
+        if (user?.role === 'employee') {
+            setTransactions(transactionsData.filter(t => t.employeeId === user.employeeId));
+        } else {
+            setTransactions(transactionsData);
         }
-        return t;
-      });
+        setLoading(false);
+    }, (error) => {
+        console.error("Error fetching transactions: ", error);
+        setLoading(false);
     });
-  }, [employees]);
 
+    return () => unsubscribe();
+  }, [user]);
+
+  const addTransaction = async (transaction: Omit<Transaction, 'id'>) => {
+    try {
+        await addDoc(collection(db, "transactions"), transaction);
+    } catch (error) {
+        console.error("Error adding transaction: ", error);
+    }
+  };
+
+  const editTransaction = async (updatedTransaction: Transaction) => {
+    try {
+        const transactionRef = doc(db, "transactions", updatedTransaction.id);
+        await updateDoc(transactionRef, updatedTransaction);
+    } catch (error) {
+        console.error("Error updating transaction: ", error);
+    }
+  };
+
+  const deleteTransaction = async (id: string) => {
+    try {
+        const transactionRef = doc(db, "transactions", id);
+        await deleteDoc(transactionRef);
+    } catch (error) {
+        console.error("Error deleting transaction: ", error);
+    }
+  };
 
   return (
-    <TransactionContext.Provider value={{ transactions: visibleTransactions, addTransaction, editTransaction, deleteTransaction }}>
+    <TransactionContext.Provider value={{ transactions, addTransaction, editTransaction, deleteTransaction, loading }}>
       {children}
     </TransactionContext.Provider>
   );

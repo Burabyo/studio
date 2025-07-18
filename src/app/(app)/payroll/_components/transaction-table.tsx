@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Pencil, Trash2, PlusCircle } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2, PlusCircle, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
@@ -56,14 +56,14 @@ const statusColors = {
 
 export function TransactionTable() {
   const { employees } = useEmployeeContext();
-  const { transactions, addTransaction, editTransaction, deleteTransaction } = useTransactionContext();
+  const { transactions, addTransaction, editTransaction, deleteTransaction, loading } = useTransactionContext();
   const { formatCurrency } = useCurrency();
   const { user } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [selectedTransaction, setSelectedTransaction] = React.useState<Transaction | null>(null);
 
-  const handleAddTransaction = (transaction: Omit<Transaction, 'id'>) => {
-    addTransaction(transaction);
+  const handleAddTransaction = async (transaction: Omit<Transaction, 'id'>) => {
+    await addTransaction(transaction);
     toast({
       title: "Transaction Added",
       description: `The transaction for ${transaction.employeeName} has been recorded.`,
@@ -71,8 +71,8 @@ export function TransactionTable() {
     setIsDialogOpen(false);
   };
   
-  const handleEditTransaction = (transaction: Transaction) => {
-    editTransaction(transaction);
+  const handleEditTransaction = async (transaction: Transaction) => {
+    await editTransaction(transaction);
     toast({
         title: "Transaction Updated",
         description: `The transaction for ${transaction.employeeName} has been updated.`,
@@ -81,8 +81,8 @@ export function TransactionTable() {
     setSelectedTransaction(null);
   };
 
-  const handleDeleteTransaction = (transactionId: string) => {
-    deleteTransaction(transactionId);
+  const handleDeleteTransaction = async (transactionId: string) => {
+    await deleteTransaction(transactionId);
      toast({
       title: "Transaction Deleted",
       description: `Transaction has been removed from the system.`,
@@ -147,7 +147,20 @@ export function TransactionTable() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {transactions.map((transaction) => (
+            {loading ? (
+                <TableRow>
+                    <TableCell colSpan={canManage ? 7 : 6} className="h-24 text-center">
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
+                    </TableCell>
+                </TableRow>
+            ) : transactions.length === 0 ? (
+                <TableRow>
+                    <TableCell colSpan={canManage ? 7 : 6} className="h-24 text-center">
+                        No transactions found. Add one to get started.
+                    </TableCell>
+                </TableRow>
+            ) : (
+            transactions.map((transaction) => (
               <TableRow key={transaction.id}>
                 <TableCell>{new Date(transaction.date).toLocaleDateString()}</TableCell>
                 <TableCell className="font-medium">{transaction.employeeName} <span className="text-muted-foreground">({transaction.employeeId})</span></TableCell>
@@ -206,7 +219,7 @@ export function TransactionTable() {
                   </TableCell>
                 )}
               </TableRow>
-            ))}
+            )))}
           </TableBody>
         </Table>
       </CardContent>

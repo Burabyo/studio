@@ -1,49 +1,84 @@
 
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import type { Employee } from '@/lib/types';
-import { employees as initialEmployees } from '@/app/(app)/employees/data';
 import { useAuth } from './auth-context';
+import { collection, onSnapshot, addDoc, updateDoc, doc, deleteDoc } from "firebase/firestore";
+import { db } from '@/lib/firebase';
 
 interface EmployeeContextType {
   employees: Employee[];
-  addEmployee: (employee: Omit<Employee, 'id'>) => void;
-  editEmployee: (employee: Employee) => void;
-  deleteEmployee: (id: string) => void;
+  addEmployee: (employee: Omit<Employee, 'id'>) => Promise<void>;
+  editEmployee: (employee: Employee) => Promise<void>;
+  deleteEmployee: (id: string) => Promise<void>;
+  loading: boolean;
 }
 
 const EmployeeContext = createContext<EmployeeContextType | undefined>(undefined);
 
 export const EmployeeProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
-  const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
   
-  const visibleEmployees = React.useMemo(() => {
-    if (user?.role === 'employee') {
-      // In a real app with real auth, we'd use user.uid to find the employee record
-      return employees.filter(e => e.id === user.employeeId);
+  useEffect(() => {
+    if (!user) {
+        setEmployees([]);
+        setLoading(false);
+        return;
+    };
+
+    setLoading(true);
+    const unsubscribe = onSnapshot(collection(db, "employees"), (snapshot) => {
+        const employeesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Employee));
+        
+        if (user?.role === 'employee') {
+            setEmployees(employeesData.filter(e => e.id === user.employeeId));
+        } else {
+            setEmployees(employeesData);
+        }
+        setLoading(false);
+    }, (error) => {
+        console.error("Error fetching employees: ", error);
+        setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+
+  const addEmployee = async (employee: Omit<Employee, 'id'>) => {
+    try {
+        // Firestore will auto-generate an ID, but your app structure uses a custom one.
+        // We'll stick to your app's convention for now.
+        const docRef = doc(db, "employees", employee.id);
+        await addDoc(collection(db, "employees"), employee);
+    } catch (error) {
+        console.error("Error adding employee: ", error);
     }
-    return employees;
-  }, [user, employees]);
-
-
-  const addEmployee = (employee: Omit<Employee, 'id'>) => {
-    // This is a simplified way to generate an ID. In a real app, a database would handle this.
-    const newEmployee = { ...employee, id: `EMP${(employees.length + 1).toString().padStart(3, '0')}` };
-    setEmployees([...employees, newEmployee]);
   };
 
-  const editEmployee = (updatedEmployee: Employee) => {
-    setEmployees(employees.map(e => (e.id === updatedEmployee.id ? updatedEmployee : e)));
+  const editEmployee = async (updatedEmployee: Employee) => {
+    try {
+        const employeeRef = doc(db, "employees", updatedEmployee.id);
+        await updateDoc(employeeRef, updatedEmployee);
+    } catch (error) {
+        console.error("Error updating employee: ", error);
+    }
   };
 
-  const deleteEmployee = (id: string) => {
-    setEmployees(employees.filter(e => e.id !== id));
+  const deleteEmployee = async (id: string) => {
+    try {
+        const employeeRef = doc(db, "employees", id);
+        await deleteDoc(employeeRef);
+    } catch (error) {
+        console.error("Error deleting employee: ", error);
+    }
   };
 
   return (
-    <EmployeeContext.Provider value={{ employees: visibleEmployees, addEmployee, editEmployee, deleteEmployee }}>
+    <EmployeeContext.Provider value={{ employees, addEmployee, editEmployee, deleteEmployee, loading }}>
       {children}
     </EmployeeContext.Provider>
   );

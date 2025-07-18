@@ -1,3 +1,4 @@
+
 "use client";
 
 import { z } from "zod";
@@ -21,12 +22,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Employee } from "@/lib/types";
-import React from "react";
+import React, { useState } from "react";
 import { useCurrency } from "@/context/currency-context";
+import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
+  id: z.string().min(1, "Employee ID is required."),
   name: z.string().min(2, "Name must be at least 2 characters."),
-  employeeId: z.string().min(1, "Employee ID is required."),
   jobTitle: z.string().min(2, "Job title is required."),
   employmentType: z.enum(["Monthly Salary", "Daily Wages"]),
   salary: z.coerce.number().min(0, "Salary/rate must be a positive number."),
@@ -38,17 +40,19 @@ type EmployeeFormValues = z.infer<typeof formSchema>;
 
 interface EmployeeFormProps {
     setDialogOpen: (open: boolean) => void;
-    onSubmit: (values: any) => void;
+    onSubmit: (values: any) => Promise<void>;
     employee?: Employee | null;
 }
 
 export function EmployeeForm({ setDialogOpen, onSubmit, employee }: EmployeeFormProps) {
   const { currency } = useCurrency();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
   const form = useForm<EmployeeFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      id: employee?.id || "",
       name: employee?.name || "",
-      employeeId: employee?.id || "",
       jobTitle: employee?.jobTitle || "",
       employmentType: employee?.employmentType || "Monthly Salary",
       salary: employee?.salary || 0,
@@ -58,9 +62,9 @@ export function EmployeeForm({ setDialogOpen, onSubmit, employee }: EmployeeForm
   });
 
   React.useEffect(() => {
-    form.reset(employee ? { ...employee, employeeId: employee.id } : {
+    form.reset(employee ? employee : {
+      id: "",
       name: "",
-      employeeId: "",
       jobTitle: "",
       employmentType: "Monthly Salary",
       salary: 0,
@@ -69,16 +73,10 @@ export function EmployeeForm({ setDialogOpen, onSubmit, employee }: EmployeeForm
     });
   }, [employee, form]);
 
-  const handleSubmit = (values: EmployeeFormValues) => {
-    onSubmit({
-      id: employee?.id || '', // Keep original ID for editing
-      name: values.name,
-      jobTitle: values.jobTitle,
-      employmentType: values.employmentType,
-      salary: values.salary,
-      bankName: values.bankName,
-      accountNumber: values.accountNumber,
-    });
+  const handleSubmit = async (values: EmployeeFormValues) => {
+    setIsSubmitting(true);
+    await onSubmit(values);
+    setIsSubmitting(false);
   };
 
   return (
@@ -100,7 +98,7 @@ export function EmployeeForm({ setDialogOpen, onSubmit, employee }: EmployeeForm
           />
           <FormField
             control={form.control}
-            name="employeeId"
+            name="id"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Employee ID</FormLabel>
@@ -193,8 +191,11 @@ export function EmployeeForm({ setDialogOpen, onSubmit, employee }: EmployeeForm
           />
         </div>
         <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button type="submit">{employee ? 'Save Changes' : 'Add Employee'}</Button>
+            <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={isSubmitting}>Cancel</Button>
+            <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {employee ? 'Save Changes' : 'Add Employee'}
+            </Button>
         </div>
       </form>
     </Form>
