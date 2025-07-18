@@ -28,6 +28,7 @@ export default function LoginPage() {
   const [signupRole, setSignupRole] = useState<UserRole>("admin");
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [employeeId, setEmployeeId] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,12 +50,12 @@ export default function LoginPage() {
     }
 
     try {
-      await signup(signupEmail, signupPassword, signupName, signupRole);
+      await signup(signupEmail, signupPassword, signupName, signupRole, signupRole === 'employee' ? employeeId : undefined);
       router.push('/dashboard');
       toast({ title: "Account Created", description: "Welcome to PayPulse!" });
     } catch (error: any) {
-       const errorMessage = error.code ? error.code.replace('auth/', '').replace(/-/g, ' ') : 'An unknown error occurred.';
-       toast({ variant: "destructive", title: "Sign-up Failed", description: `Error: ${errorMessage}. Please check your details.` });
+       const errorMessage = error.message || (error.code ? error.code.replace('auth/', '').replace(/-/g, ' ') : 'An unknown error occurred.');
+       toast({ variant: "destructive", title: "Sign-up Failed", description: `${errorMessage}.` });
     }
   };
 
@@ -127,6 +128,42 @@ export default function LoginPage() {
                             </div>
                             <div className="grid gap-4">
                                 <div className="grid gap-2">
+                                    <Label>Role</Label>
+                                    <RadioGroup 
+                                    defaultValue={signupRole} 
+                                    onValueChange={(value) => setSignupRole(value as UserRole)}
+                                    className="flex items-center space-x-4 pt-2"
+                                    >
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="admin" id="admin" />
+                                        <Label htmlFor="admin">Admin</Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="manager" id="manager" />
+                                        <Label htmlFor="manager">Manager</Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="employee" id="employee" />
+                                        <Label htmlFor="employee">Employee</Label>
+                                    </div>
+                                    </RadioGroup>
+                                </div>
+
+                                {signupRole === 'employee' && (
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="signup-employee-id">Employee ID</Label>
+                                        <Input 
+                                            id="signup-employee-id" 
+                                            type="text" 
+                                            placeholder="Your unique employee ID" 
+                                            required 
+                                            value={employeeId} 
+                                            onChange={(e) => setEmployeeId(e.target.value)}
+                                        />
+                                    </div>
+                                )}
+
+                                <div className="grid gap-2">
                                     <Label htmlFor="signup-name">Full Name</Label>
                                     <Input id="signup-name" type="text" placeholder="John Doe" required value={signupName} onChange={(e) => setSignupName(e.target.value)}/>
                                 </div>
@@ -175,27 +212,6 @@ export default function LoginPage() {
                                             {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                         </Button>
                                     </div>
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label>Role</Label>
-                                    <RadioGroup 
-                                    defaultValue={signupRole} 
-                                    onValueChange={(value) => setSignupRole(value as UserRole)}
-                                    className="flex items-center space-x-4 pt-2"
-                                    >
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="admin" id="admin" />
-                                        <Label htmlFor="admin">Admin</Label>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="manager" id="manager" />
-                                        <Label htmlFor="manager">Manager</Label>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="employee" id="employee" />
-                                        <Label htmlFor="employee">Employee</Label>
-                                    </div>
-                                    </RadioGroup>
                                 </div>
                             </div>
                              <Button type="submit" className="w-full" disabled={loading}>

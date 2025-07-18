@@ -11,7 +11,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from "firebase/firestore"; 
+import { doc, getDoc, setDoc, updateDoc, query, where, getDocs, collection } from "firebase/firestore"; 
 import { app, db } from '@/lib/firebase';
 
 export type UserRole = 'admin' | 'manager' | 'employee';
@@ -29,7 +29,7 @@ interface AuthContextType {
   firebaseUser: FirebaseUser | null;
   loading: boolean;
   login: (email: string, pass: string) => Promise<any>;
-  signup: (email: string, pass: string, name: string, role: UserRole) => Promise<any>;
+  signup: (email: string, pass: string, name: string, role: UserRole, employeeId?: string) => Promise<any>;
   logout: () => void;
 }
 
@@ -47,7 +47,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (fbUser) {
         setFirebaseUser(fbUser);
         
-        // Fetch user profile from Firestore
         const userDocRef = doc(db, "users", fbUser.uid);
         const userDoc = await getDoc(userDocRef);
 
@@ -58,18 +57,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             email: fbUser.email,
             name: userData.name || fbUser.email || 'User',
             role: userData.role || 'employee',
-            employeeId: userData.role === 'employee' ? 'EMP001' : undefined,
+            employeeId: userData.employeeId,
           };
           setUser(appUser);
         } else {
-            // This case might happen if user is created in Firebase console
-            // without a corresponding doc in Firestore.
              const appUser: User = {
                 uid: fbUser.uid,
                 email: fbUser.email,
                 name: fbUser.email || 'User',
                 role: 'employee',
-                employeeId: 'EMP001',
             };
             setUser(appUser);
         }
@@ -89,26 +85,51 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return signInWithEmailAndPassword(auth, email, pass);
   };
   
-  const signup = async (email: string, pass: string, name: string, role: UserRole) => {
+  const signup = async (email: string, pass: string, name: string, role: UserRole, employeeId?: string) => {
       setLoading(true);
+
+      if (role === 'employee') {
+        if (!employeeId) {
+            throw new Error("Employee ID is required for employee role.");
+        }
+        
+        // 1. Check if an employee with this ID exists
+        const employeeRef = doc(db, "employees", employeeId);
+        const employeeDoc = await getDoc(employeeRef);
+        if (!employeeDoc.exists()) {
+            throw new Error(`Employee with ID "${employeeId}" not found.`);
+        }
+        
+        // 2. Check if this employee ID is already linked to a user account
+        const usersQuery = query(collection(db, "users"), where("employeeId", "==", employeeId));
+        const querySnapshot = await getDocs(usersQuery);
+        if (!querySnapshot.empty) {
+            throw new Error(`Employee ID "${employeeId}" is already linked to another account.`);
+        }
+      }
+      
       const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
       const fbUser = userCredential.user;
       
-      // Store user profile in Firestore
-      await setDoc(doc(db, "users", fbUser.uid), {
+      const userProfileData: any = {
         uid: fbUser.uid,
         name,
         email,
         role,
-      });
+      };
 
-      // Manually set user for immediate UI update
+      if (role === 'employee' && employeeId) {
+        userProfileData.employeeId = employeeId;
+      }
+      
+      await setDoc(doc(db, "users", fbUser.uid), userProfileData);
+
       const appUser: User = {
         uid: fbUser.uid,
         email: fbUser.email,
         name: name,
         role: role,
-        employeeId: role === 'employee' ? 'EMP001' : undefined,
+        employeeId: userProfileData.employeeId,
       };
       setUser(appUser);
       setFirebaseUser(fbUser);
