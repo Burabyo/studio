@@ -34,6 +34,7 @@ const formSchema = z.object({
   salary: z.coerce.number().min(0, "Salary/rate must be a positive number."),
   bankName: z.string().min(2, "Bank name is required."),
   accountNumber: z.string().min(5, "Account number is required."),
+  role: z.enum(["employee", "manager"]),
 });
 
 type EmployeeFormValues = z.infer<typeof formSchema>;
@@ -58,6 +59,7 @@ export function EmployeeForm({ setDialogOpen, onSubmit, employee }: EmployeeForm
       salary: employee?.salary || 0,
       bankName: employee?.bankName || "",
       accountNumber: employee?.accountNumber || "",
+      role: employee?.role || "employee",
     },
   });
 
@@ -70,6 +72,7 @@ export function EmployeeForm({ setDialogOpen, onSubmit, employee }: EmployeeForm
       salary: 0,
       bankName: "",
       accountNumber: "",
+      role: "employee",
     });
   }, [employee, form]);
 
@@ -118,6 +121,30 @@ export function EmployeeForm({ setDialogOpen, onSubmit, employee }: EmployeeForm
                 <FormControl>
                   <Input placeholder="Software Engineer" {...field} />
                 </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+           <FormField
+            control={form.control}
+            name="role"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Role</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select user role" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="employee">Employee</SelectItem>
+                    <SelectItem value="manager">Manager</SelectItem>
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}

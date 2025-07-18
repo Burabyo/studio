@@ -9,7 +9,7 @@ import { db } from '@/lib/firebase';
 
 interface EmployeeContextType {
   employees: Employee[];
-  addEmployee: (employee: Employee) => Promise<void>;
+  addEmployee: (employeeData: Omit<Employee, 'id'>, id: string) => Promise<void>;
   editEmployee: (employee: Employee) => Promise<void>;
   deleteEmployee: (id: string) => Promise<void>;
   loading: boolean;
@@ -50,12 +50,11 @@ export const EmployeeProvider = ({ children }: { children: ReactNode }) => {
   }, [user]);
 
 
-  const addEmployee = async (employeeData: Employee) => {
+  const addEmployee = async (employeeData: Omit<Employee, 'id'>, id: string) => {
     if (!user?.companyId) throw new Error("User is not associated with a company.");
     try {
-        const { id, ...data } = employeeData;
         const employeeRef = doc(db, `companies/${user.companyId}/employees`, id);
-        await setDoc(employeeRef, data);
+        await setDoc(employeeRef, employeeData);
     } catch (error) {
         console.error("Error adding employee: ", error);
         throw error;

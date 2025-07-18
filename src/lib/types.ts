@@ -7,6 +7,7 @@ export type Employee = {
   bankName: string;
   accountNumber: string;
   salary: number;
+  role: 'employee' | 'manager';
 };
 
 export type Transaction = {

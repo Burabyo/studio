@@ -16,6 +16,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 export default function LoginPage() {
   const { signup, login, loading } = useAuth();
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState("login");
 
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -26,10 +27,13 @@ export default function LoginPage() {
   const [signupConfirmPassword, setSignupConfirmPassword] = useState("");
   const [signupName, setSignupName] = useState("");
   const [signupCompanyName, setSignupCompanyName] = useState("");
-  const [signupRole, setSignupRole] = useState<UserRole>("admin");
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [employeeId, setEmployeeId] = useState("");
+  
+  // 'admin' for the company signup form, 'employee' for the user linking form.
+  const signupType = activeTab === 'signupAdmin' ? 'admin' : 'employee';
+
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,9 +59,10 @@ export default function LoginPage() {
         email: signupEmail, 
         password: signupPassword, 
         name: signupName, 
-        role: signupRole, 
-        companyName: signupRole === 'admin' ? signupCompanyName : undefined,
-        employeeId: signupRole === 'employee' ? employeeId : undefined
+        // Role is determined by the form they use. Admins create companies. Others link via Employee ID.
+        role: signupType, 
+        companyName: signupType === 'admin' ? signupCompanyName : undefined,
+        employeeId: signupType === 'employee' ? employeeId : undefined
       });
       router.push('/dashboard');
       toast({ title: "Account Created", description: "Welcome to PayPulse!" });
@@ -84,7 +89,7 @@ export default function LoginPage() {
                     <PaypulseIcon className="w-16 h-16 text-primary mb-4 mx-auto" />
                     <h1 className="text-3xl font-bold tracking-tight">Welcome to PayPulse</h1>
                 </div>
-                <Tabs defaultValue="login" className="w-full">
+                <Tabs defaultValue="login" className="w-full" onValueChange={setActiveTab}>
                     <TabsList className="grid w-full grid-cols-2">
                         <TabsTrigger value="login">Login</TabsTrigger>
                         <TabsTrigger value="signup">Sign Up</TabsTrigger>
@@ -129,114 +134,138 @@ export default function LoginPage() {
                         </form>
                     </TabsContent>
                     <TabsContent value="signup">
-                        <form onSubmit={handleSignup} className="space-y-6 pt-6">
-                            <div className="text-center">
-                                <h2 className="text-2xl font-bold tracking-tight">Create an account</h2>
-                                <p className="text-muted-foreground">Get started with PayPulse in seconds.</p>
-                            </div>
-                            <div className="grid gap-4">
-                                <div className="grid gap-2">
-                                    <Label>Account Type</Label>
-                                    <RadioGroup 
-                                    defaultValue={signupRole} 
-                                    onValueChange={(value) => setSignupRole(value as UserRole)}
-                                    className="flex items-center space-x-4 pt-2"
-                                    >
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="admin" id="admin" />
-                                        <Label htmlFor="admin">Company Admin</Label>
+                        <Tabs defaultValue="signupAdmin" className="w-full" onValueChange={setActiveTab}>
+                             <TabsList className="grid w-full grid-cols-2">
+                                <TabsTrigger value="signupAdmin">Create a Company</TabsTrigger>
+                                <TabsTrigger value="signupEmployee">Join a Company</TabsTrigger>
+                            </TabsList>
+                             <TabsContent value="signupAdmin">
+                                <form onSubmit={handleSignup} className="space-y-6 pt-6">
+                                    <div className="text-center">
+                                        <h2 className="text-2xl font-bold tracking-tight">Create a new Company Account</h2>
+                                        <p className="text-muted-foreground">Sign up as an administrator to get started.</p>
                                     </div>
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="employee" id="employee" />
-                                        <Label htmlFor="employee">Employee</Label>
+                                    <div className="grid gap-4">
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="signup-company-name">Company Name</Label>
+                                            <Input 
+                                                id="signup-company-name" 
+                                                type="text" 
+                                                placeholder="Your Company Inc." 
+                                                required 
+                                                value={signupCompanyName} 
+                                                onChange={(e) => setSignupCompanyName(e.target.value)}
+                                            />
+                                        </div>
+                                         <div className="grid gap-2">
+                                            <Label htmlFor="signup-name-admin">Full Name</Label>
+                                            <Input id="signup-name-admin" type="text" placeholder="John Doe" required value={signupName} onChange={(e) => setSignupName(e.target.value)}/>
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="signup-email-admin">Email</Label>
+                                            <Input id="signup-email-admin" type="email" placeholder="m@example.com" required value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)}/>
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="signup-password-admin">Password</Label>
+                                             <div className="relative">
+                                                <Input 
+                                                    id="signup-password-admin" 
+                                                    type={showSignupPassword ? "text" : "password"}
+                                                    required 
+                                                    value={signupPassword} 
+                                                    onChange={(e) => setSignupPassword(e.target.value)}
+                                                />
+                                                <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:bg-transparent" onClick={() => setShowSignupPassword(prev => !prev)}>
+                                                    {showSignupPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                </Button>
+                                            </div>
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="signup-confirm-password-admin">Confirm Password</Label>
+                                            <div className="relative">
+                                                <Input 
+                                                    id="signup-confirm-password-admin" 
+                                                    type={showConfirmPassword ? "text" : "password"}
+                                                    required 
+                                                    value={signupConfirmPassword} 
+                                                    onChange={(e) => setSignupConfirmPassword(e.target.value)}
+                                                />
+                                                <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:bg-transparent" onClick={() => setShowConfirmPassword(prev => !prev)}>
+                                                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                </Button>
+                                            </div>
+                                        </div>
                                     </div>
-                                    </RadioGroup>
-                                </div>
-
-                                {signupRole === 'admin' && (
-                                     <div className="grid gap-2">
-                                        <Label htmlFor="signup-company-name">Company Name</Label>
-                                        <Input 
-                                            id="signup-company-name" 
-                                            type="text" 
-                                            placeholder="Your Company Inc." 
-                                            required 
-                                            value={signupCompanyName} 
-                                            onChange={(e) => setSignupCompanyName(e.target.value)}
-                                        />
+                                    <Button type="submit" className="w-full" disabled={loading}>
+                                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        Create Company Account
+                                    </Button>
+                                </form>
+                            </TabsContent>
+                             <TabsContent value="signupEmployee">
+                                 <form onSubmit={handleSignup} className="space-y-6 pt-6">
+                                    <div className="text-center">
+                                        <h2 className="text-2xl font-bold tracking-tight">Join your Company</h2>
+                                        <p className="text-muted-foreground">Sign up using the Employee ID from your administrator.</p>
                                     </div>
-                                )}
-                                
-                                {signupRole === 'employee' && (
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="signup-employee-id">Employee ID</Label>
-                                        <Input 
-                                            id="signup-employee-id" 
-                                            type="text" 
-                                            placeholder="Your unique employee ID provided by your admin" 
-                                            required 
-                                            value={employeeId} 
-                                            onChange={(e) => setEmployeeId(e.target.value)}
-                                        />
+                                    <div className="grid gap-4">
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="signup-employee-id">Employee ID</Label>
+                                            <Input 
+                                                id="signup-employee-id" 
+                                                type="text" 
+                                                placeholder="Your unique employee ID" 
+                                                required 
+                                                value={employeeId} 
+                                                onChange={(e) => setEmployeeId(e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="signup-name-employee">Full Name</Label>
+                                            <Input id="signup-name-employee" type="text" placeholder="John Doe" required value={signupName} onChange={(e) => setSignupName(e.target.value)}/>
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="signup-email-employee">Email</Label>
+                                            <Input id="signup-email-employee" type="email" placeholder="m@example.com" required value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)}/>
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="signup-password-employee">Password</Label>
+                                             <div className="relative">
+                                                <Input 
+                                                    id="signup-password-employee" 
+                                                    type={showSignupPassword ? "text" : "password"}
+                                                    required 
+                                                    value={signupPassword} 
+                                                    onChange={(e) => setSignupPassword(e.target.value)}
+                                                />
+                                                <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:bg-transparent" onClick={() => setShowSignupPassword(prev => !prev)}>
+                                                    {showSignupPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                </Button>
+                                            </div>
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="signup-confirm-password-employee">Confirm Password</Label>
+                                            <div className="relative">
+                                                <Input 
+                                                    id="signup-confirm-password-employee" 
+                                                    type={showConfirmPassword ? "text" : "password"}
+                                                    required 
+                                                    value={signupConfirmPassword} 
+                                                    onChange={(e) => setSignupConfirmPassword(e.target.value)}
+                                                />
+                                                <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:bg-transparent" onClick={() => setShowConfirmPassword(prev => !prev)}>
+                                                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                </Button>
+                                            </div>
+                                        </div>
                                     </div>
-                                )}
-
-                                <div className="grid gap-2">
-                                    <Label htmlFor="signup-name">Full Name</Label>
-                                    <Input id="signup-name" type="text" placeholder="John Doe" required value={signupName} onChange={(e) => setSignupName(e.target.value)}/>
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="signup-email">Email</Label>
-                                    <Input id="signup-email" type="email" placeholder="m@example.com" required value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)}/>
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="signup-password">Password</Label>
-                                    <div className="relative">
-                                        <Input 
-                                            id="signup-password" 
-                                            type={showSignupPassword ? "text" : "password"}
-                                            required 
-                                            value={signupPassword} 
-                                            onChange={(e) => setSignupPassword(e.target.value)}
-                                        />
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:bg-transparent"
-                                            onClick={() => setShowSignupPassword(prev => !prev)}
-                                        >
-                                            {showSignupPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                        </Button>
-                                    </div>
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="signup-confirm-password">Confirm Password</Label>
-                                    <div className="relative">
-                                        <Input 
-                                            id="signup-confirm-password" 
-                                            type={showConfirmPassword ? "text" : "password"}
-                                            required 
-                                            value={signupConfirmPassword} 
-                                            onChange={(e) => setSignupConfirmPassword(e.target.value)}
-                                        />
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:bg-transparent"
-                                            onClick={() => setShowConfirmPassword(prev => !prev)}
-                                        >
-                                            {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                        </Button>
-                                    </div>
-                                </div>
-                            </div>
-                             <Button type="submit" className="w-full" disabled={loading}>
-                                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Create Account
-                            </Button>
-                        </form>
+                                    <Button type="submit" className="w-full" disabled={loading}>
+                                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        Join Company
+                                    </Button>
+                                </form>
+                            </TabsContent>
+                        </Tabs>
                     </TabsContent>
                 </Tabs>
             </div>

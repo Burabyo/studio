@@ -52,9 +52,10 @@ export function EmployeeTable() {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [selectedEmployee, setSelectedEmployee] = React.useState<Employee | null>(null);
 
-  const handleAddEmployee = async (employee: Employee) => {
+  const handleAddEmployee = async (employee: Omit<Employee, 'id'> & { id: string }) => {
     try {
-      await addEmployee(employee);
+      const { id, ...data } = employee;
+      await addEmployee(data, id);
       toast({
         title: "Employee Added",
         description: `${employee.name} has been successfully added.`,
@@ -114,7 +115,7 @@ export function EmployeeTable() {
     setIsDialogOpen(true);
   }
   
-  const canManage = user?.role === 'admin' || user?.role === 'manager';
+  const canManage = user?.role === 'admin';
 
   return (
     <>
@@ -153,21 +154,22 @@ export function EmployeeTable() {
               <TableHead>Employee ID</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Job Title</TableHead>
+              <TableHead>Role</TableHead>
               <TableHead>Type</TableHead>
               <TableHead className="text-right">Salary/Rate</TableHead>
-              {canManage && <TableHead className="text-right">Actions</TableHead>}
+              {user?.role === 'admin' && <TableHead className="text-right">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
                 <TableRow>
-                    <TableCell colSpan={canManage ? 6 : 5} className="h-24 text-center">
+                    <TableCell colSpan={user?.role === 'admin' ? 7 : 6} className="h-24 text-center">
                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                     </TableCell>
                 </TableRow>
             ) : employees.length === 0 ? (
                 <TableRow>
-                    <TableCell colSpan={canManage ? 6 : 5} className="h-24 text-center">
+                    <TableCell colSpan={user?.role === 'admin' ? 7 : 6} className="h-24 text-center">
                         No employees found. Add one to get started.
                     </TableCell>
                 </TableRow>
@@ -177,6 +179,7 @@ export function EmployeeTable() {
                 <TableCell className="font-medium">{employee.id}</TableCell>
                 <TableCell>{employee.name}</TableCell>
                 <TableCell>{employee.jobTitle}</TableCell>
+                <TableCell className="capitalize">{employee.role}</TableCell>
                 <TableCell>
                   <Badge variant={employee.employmentType === 'Monthly Salary' ? 'secondary' : 'outline'}>
                     {employee.employmentType}
@@ -187,7 +190,7 @@ export function EmployeeTable() {
                     ? formatCurrency(employee.salary)
                     : `${formatCurrency(employee.salary)}/day`}
                 </TableCell>
-                {canManage && (
+                {user?.role === 'admin' && (
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
