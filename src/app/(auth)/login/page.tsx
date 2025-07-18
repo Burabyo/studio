@@ -11,7 +11,6 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Eye, EyeOff } from "lucide-react";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 export default function LoginPage() {
   const { signup, login, loading } = useAuth();
@@ -55,12 +54,15 @@ export default function LoginPage() {
     }
 
     try {
+      // For the 'employee' type signup, the role is determined by the employee record in the DB.
+      // For the 'admin' type, the role is always 'admin'.
+      const roleToSignup = signupType === 'admin' ? 'admin' : 'employee';
+
       await signup({
         email: signupEmail, 
         password: signupPassword, 
         name: signupName, 
-        // Role is determined by the form they use. Admins create companies. Others link via Employee ID.
-        role: signupType, 
+        role: roleToSignup,
         companyName: signupType === 'admin' ? signupCompanyName : undefined,
         employeeId: signupType === 'employee' ? employeeId : undefined
       });
