@@ -51,7 +51,6 @@ export const EmployeeProvider = ({ children }: { children: ReactNode }) => {
   const addEmployee = async (employeeData: Employee) => {
     try {
         const { id, ...data } = employeeData;
-        // Use setDoc with a specific ID to prevent duplicates
         const employeeRef = doc(db, "employees", id);
         await setDoc(employeeRef, data);
     } catch (error) {

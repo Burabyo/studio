@@ -60,7 +60,8 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
   const editTransaction = async (updatedTransaction: Transaction) => {
     try {
         const transactionRef = doc(db, "transactions", updatedTransaction.id);
-        await updateDoc(transactionRef, updatedTransaction);
+        const { id, ...data } = updatedTransaction;
+        await updateDoc(transactionRef, data);
     } catch (error) {
         console.error("Error updating transaction: ", error);
     }
