@@ -88,12 +88,20 @@ export function TransactionForm({ setDialogOpen, onSubmit, transaction, employee
   const handleSubmit = async (values: TransactionFormValues) => {
     setIsSubmitting(true);
     const selectedEmployee = employees.find(e => e.id === values.employeeId);
-    await onSubmit({
-      id: transaction?.id || undefined, // Pass undefined for new transactions
+    
+    const submissionData: any = {
       ...values,
       date: format(values.date, 'yyyy-MM-dd'),
       employeeName: selectedEmployee?.name || 'Unknown Employee',
-    });
+    }
+
+    if (transaction) {
+      submissionData.id = transaction.id;
+    } else {
+      delete submissionData.id;
+    }
+
+    await onSubmit(submissionData);
     setIsSubmitting(false);
   };
 
