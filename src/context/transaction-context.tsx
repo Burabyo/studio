@@ -54,6 +54,7 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
         await addDoc(collection(db, "transactions"), transaction);
     } catch (error) {
         console.error("Error adding transaction: ", error);
+        throw error;
     }
   };
 
@@ -64,6 +65,7 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
         await updateDoc(transactionRef, data);
     } catch (error) {
         console.error("Error updating transaction: ", error);
+        throw error;
     }
   };
 
@@ -73,6 +75,7 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
         await deleteDoc(transactionRef);
     } catch (error) {
         console.error("Error deleting transaction: ", error);
+        throw error;
     }
   };
 
