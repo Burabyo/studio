@@ -54,18 +54,25 @@ export default function LoginPage() {
     }
 
     try {
-      // For the 'employee' type signup, the role is determined by the employee record in the DB.
-      // For the 'admin' type, the role is always 'admin'.
-      const roleToSignup = signupType === 'admin' ? 'admin' : 'employee';
-
-      await signup({
-        email: signupEmail, 
-        password: signupPassword, 
-        name: signupName, 
-        role: roleToSignup,
-        companyName: signupType === 'admin' ? signupCompanyName : undefined,
-        employeeId: signupType === 'employee' ? employeeId : undefined
-      });
+      if (signupType === 'admin') {
+         await signup({
+          email: signupEmail, 
+          password: signupPassword, 
+          name: signupName, 
+          role: 'admin',
+          companyName: signupCompanyName,
+        });
+      } else {
+        // For employee/manager, the role is determined by their record in the database.
+        await signup({
+          email: signupEmail,
+          password: signupPassword,
+          name: signupName,
+          role: 'employee', // This is a placeholder; the backend determines the actual role.
+          employeeId: employeeId,
+        });
+      }
+     
       router.push('/dashboard');
       toast({ title: "Account Created", description: "Welcome to PayPulse!" });
     } catch (error: any) {
