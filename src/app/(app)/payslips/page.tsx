@@ -6,7 +6,7 @@ export default function PayslipsPage() {
       <header>
         <h1 className="text-3xl font-bold tracking-tight">Generate Payslip</h1>
         <p className="text-muted-foreground">
-          Use AI to generate accurate and professional payslips for your employees.
+          Generate accurate and professional payslips for your employees.
         </p>
       </header>
       <PayslipGenerator />

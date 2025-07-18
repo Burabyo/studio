@@ -35,13 +35,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ChevronsUpDown, Loader2, Sparkles, Download } from "lucide-react";
+import { ChevronsUpDown, Loader2, FileText, Printer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
 import { useEmployeeContext } from "@/context/employee-context";
 import { useTransactionContext } from "@/context/transaction-context";
 import { useCurrency } from "@/context/currency-context";
-import { generatePayslip, type GeneratePayslipInput } from "@/ai/flows/generate-payslip";
+import { generatePayslipText, type PayslipData } from "@/lib/payslip";
 import { toast } from "@/hooks/use-toast";
 import { downloadPdf } from "@/lib/pdf";
 
@@ -94,6 +94,9 @@ export function PayslipGenerator() {
       return;
     }
 
+    // Simulate a short delay to provide user feedback
+    await new Promise(resolve => setTimeout(resolve, 500));
+
     // Calculate earnings and deductions for the current month
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
@@ -123,7 +126,7 @@ export function PayslipGenerator() {
     const totalDeductions = advances + otherDeductions + totalContributions + taxAmount;
     const netPay = grossPay - totalDeductions;
     
-    const payslipInput: GeneratePayslipInput = {
+    const payslipData: PayslipData = {
       companyName: payslipInfo.companyName,
       companyTagline: payslipInfo.companyTagline,
       companyContact: payslipInfo.companyContact,
@@ -139,13 +142,12 @@ export function PayslipGenerator() {
       bankName: employee.bankName,
       accountNumber: employee.accountNumber,
       recurringContributions: contributionAmounts,
-      currency: currency,
       currencySymbol: getCurrencySymbol(),
     };
     
     try {
-        const result = await generatePayslip(payslipInput);
-        setGeneratedPayslip(result.payslip);
+        const result = generatePayslipText(payslipData);
+        setGeneratedPayslip(result);
     } catch (error) {
         console.error("Error generating payslip:", error);
         toast({
@@ -232,8 +234,8 @@ export function PayslipGenerator() {
                 />
              
               <Button type="submit" disabled={isLoading || !selectedEmployeeId} className="w-full">
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                Generate with AI
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
+                Generate Payslip
               </Button>
             </form>
           </Form>
@@ -243,9 +245,9 @@ export function PayslipGenerator() {
       <Card className="lg:col-span-1">
           <CardHeader>
             <CardTitle>Generated Payslip</CardTitle>
-            <CardDescription>Review the AI-generated payslip below. You can download it as a PDF.</CardDescription>
+            <CardDescription>Review the generated payslip below. You can print or download it as a PDF.</CardDescription>
           </CardHeader>
-          <CardContent className="min-h-[300px] bg-muted/50 rounded-md p-4 whitespace-pre-wrap font-mono text-sm">
+          <CardContent className="min-h-[300px] bg-muted/50 rounded-md p-4 whitespace-pre-wrap font-mono text-sm overflow-y-auto">
             {isLoading && (
               <div className="flex items-center justify-center h-full">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -262,8 +264,8 @@ export function PayslipGenerator() {
           </CardContent>
           <CardFooter className="justify-end">
             <Button onClick={handleDownload} disabled={!generatedPayslip || isLoading}>
-              <Download className="mr-2 h-4 w-4" />
-              Download PDF
+              <Printer className="mr-2 h-4 w-4" />
+              Print / Download PDF
             </Button>
           </CardFooter>
         </Card>
