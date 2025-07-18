@@ -53,20 +53,13 @@ export default function LoginPage() {
     }
 
     try {
-      let roleToSignup: UserRole;
-      if (activeSignupTab === 'signupAdmin') {
-        roleToSignup = 'admin';
-      } else if (activeSignupTab === 'signupManager') {
-        roleToSignup = 'manager';
-      } else {
-        roleToSignup = 'employee';
-      }
+      const roleToSignup: UserRole = activeSignupTab === 'signupAdmin' ? 'admin' : 'employee';
 
       await signup({
         email: signupEmail,
         password: signupPassword,
         name: signupName,
-        role: roleToSignup, 
+        role: roleToSignup, // This will be ignored for non-admins and determined by the DB record
         companyName: signupCompanyName,
         employeeId: employeeId,
       });
@@ -142,10 +135,9 @@ export default function LoginPage() {
                     </TabsContent>
                     <TabsContent value="signup">
                         <Tabs defaultValue="signupAdmin" className="w-full" onValueChange={setActiveSignupTab}>
-                             <TabsList className="grid w-full grid-cols-3">
+                             <TabsList className="grid w-full grid-cols-2">
                                 <TabsTrigger value="signupAdmin">Create Company</TabsTrigger>
-                                <TabsTrigger value="signupManager">Join as Manager</TabsTrigger>
-                                <TabsTrigger value="signupEmployee">Join as Employee</TabsTrigger>
+                                <TabsTrigger value="signupEmployee">Join Company</TabsTrigger>
                             </TabsList>
                              <TabsContent value="signupAdmin">
                                 <form onSubmit={handleSignup} className="space-y-6 pt-6">
@@ -210,74 +202,11 @@ export default function LoginPage() {
                                     </Button>
                                 </form>
                             </TabsContent>
-                             <TabsContent value="signupManager">
-                                 <form onSubmit={handleSignup} className="space-y-6 pt-6">
-                                    <div className="text-center">
-                                        <h2 className="text-2xl font-bold tracking-tight">Join as a Manager</h2>
-                                        <p className="text-muted-foreground">Sign up using the Employee ID from your administrator.</p>
-                                    </div>
-                                    <div className="grid gap-4">
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="signup-employee-id-manager">Employee ID</Label>
-                                            <Input 
-                                                id="signup-employee-id-manager" 
-                                                type="text" 
-                                                placeholder="Your unique employee ID" 
-                                                required 
-                                                value={employeeId} 
-                                                onChange={(e) => setEmployeeId(e.target.value)}
-                                            />
-                                        </div>
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="signup-name-manager">Full Name</Label>
-                                            <Input id="signup-name-manager" type="text" placeholder="Jane Smith" required value={signupName} onChange={(e) => setSignupName(e.target.value)}/>
-                                        </div>
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="signup-email-manager">Email</Label>
-                                            <Input id="signup-email-manager" type="email" placeholder="manager@example.com" required value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)}/>
-                                        </div>
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="signup-password-manager">Password</Label>
-                                             <div className="relative">
-                                                <Input 
-                                                    id="signup-password-manager" 
-                                                    type={showSignupPassword ? "text" : "password"}
-                                                    required 
-                                                    value={signupPassword} 
-                                                    onChange={(e) => setSignupPassword(e.target.value)}
-                                                />
-                                                <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:bg-transparent" onClick={() => setShowSignupPassword(prev => !prev)}>
-                                                    {showSignupPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                                </Button>
-                                            </div>
-                                        </div>
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="signup-confirm-password-manager">Confirm Password</Label>
-                                            <div className="relative">
-                                                <Input 
-                                                    id="signup-confirm-password-manager" 
-                                                    type={showConfirmPassword ? "text" : "password"}
-                                                    required 
-                                                    value={signupConfirmPassword} 
-                                                    onChange={(e) => setSignupConfirmPassword(e.target.value)}
-                                                />
-                                                <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:bg-transparent" onClick={() => setShowConfirmPassword(prev => !prev)}>
-                                                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <Button type="submit" className="w-full" disabled={loading}>
-                                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        Join Company as Manager
-                                    </Button>
-                                </form>
-                            </TabsContent>
                              <TabsContent value="signupEmployee">
                                  <form onSubmit={handleSignup} className="space-y-6 pt-6">
                                     <div className="text-center">
-                                        <h2 className="text-2xl font-bold tracking-tight">Join as an Employee</h2>
-                                        <p className="text-muted-foreground">Sign up using the Employee ID from your administrator.</p>
+                                        <h2 className="text-2xl font-bold tracking-tight">Join an existing Company</h2>
+                                        <p className="text-muted-foreground">Sign up using the Employee ID provided by your administrator.</p>
                                     </div>
                                     <div className="grid gap-4">
                                         <div className="grid gap-2">
@@ -332,7 +261,7 @@ export default function LoginPage() {
                                     </div>
                                     <Button type="submit" className="w-full" disabled={loading}>
                                         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        Join Company as Employee
+                                        Join Company
                                     </Button>
                                 </form>
                             </TabsContent>

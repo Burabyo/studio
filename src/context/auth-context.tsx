@@ -100,6 +100,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const batch = writeBatch(db);
 
       let companyId: string;
+      let finalRole: UserRole = role;
       
       if (role === 'admin') {
         if (!companyName) throw new Error("Company name is required for admin sign-up.");
@@ -123,7 +124,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         };
         batch.set(newCompanyRef, companyData);
       }
-      else { // 'employee' or 'manager' signup flow
+      else { // 'employee' or 'manager' joining flow
         if (!employeeId) throw new Error("Employee ID is required to join a company.");
         
         const employeeQuery = query(
@@ -142,33 +143,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const employeeDoc = employeeQuerySnapshot.docs[0];
         const foundEmployeeRecord = { id: employeeDoc.id, ...employeeDoc.data() } as Employee;
         
-        // Validate that the user is signing up for the correct role.
-        if (foundEmployeeRecord.role !== role) {
-            await fbUser.delete();
-            throw new Error(`Your assigned role is '${foundEmployeeRecord.role}'. Please use the correct sign-up form.`);
-        }
+        // This is the fix: use the role from the database record
+        finalRole = foundEmployeeRecord.role;
+        companyId = employeeDoc.ref.parent.parent!.id; 
 
-        const foundCompanyId = employeeDoc.ref.parent.parent!.id; 
-
-        const usersQuery = query(collection(db, "users"), where("employeeId", "==", employeeId), where("companyId", "==", foundCompanyId), limit(1));
+        const usersQuery = query(collection(db, "users"), where("employeeId", "==", employeeId), where("companyId", "==", companyId), limit(1));
         const userSnapshot = await getDocs(usersQuery);
         if (!userSnapshot.empty) {
             await fbUser.delete();
             throw new Error(`Employee ID "${employeeId}" is already linked to another account.`);
         }
-        
-        companyId = foundCompanyId;
       }
 
       const userProfileData: any = {
         uid: fbUser.uid,
         name,
         email,
-        role: role, // Use the role from the form ('admin', 'manager', or 'employee')
+        role: finalRole,
         companyId: companyId,
       };
 
-      if (role !== 'admin' && employeeId) {
+      if (finalRole !== 'admin' && employeeId) {
         userProfileData.employeeId = employeeId;
       }
       
@@ -181,7 +176,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         uid: fbUser.uid,
         email: fbUser.email,
         name: name,
-        role: role,
+        role: finalRole,
         companyId: companyId,
         employeeId: userProfileData.employeeId,
       };
