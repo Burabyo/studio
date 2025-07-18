@@ -4,7 +4,7 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import type { Employee } from '@/lib/types';
 import { useAuth } from './auth-context';
-import { collection, onSnapshot, addDoc, updateDoc, doc, deleteDoc } from "firebase/firestore";
+import { collection, onSnapshot, addDoc, updateDoc, doc, deleteDoc, setDoc } from "firebase/firestore";
 import { db } from '@/lib/firebase';
 
 interface EmployeeContextType {
@@ -48,12 +48,11 @@ export const EmployeeProvider = ({ children }: { children: ReactNode }) => {
   }, [user]);
 
 
-  const addEmployee = async (employee: Omit<Employee, 'id'>) => {
+  const addEmployee = async (employeeData: Omit<Employee, 'id'>) => {
     try {
-        // Firestore will auto-generate an ID, but your app structure uses a custom one.
-        // We'll stick to your app's convention for now.
-        const docRef = doc(db, "employees", employee.id);
-        await addDoc(collection(db, "employees"), employee);
+        // Use setDoc with a specific ID to prevent duplicates
+        const employeeRef = doc(db, "employees", employeeData.id);
+        await setDoc(employeeRef, employeeData);
     } catch (error) {
         console.error("Error adding employee: ", error);
     }

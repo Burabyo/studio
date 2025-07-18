@@ -31,7 +31,9 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
 
     setLoading(true);
     const unsubscribe = onSnapshot(collection(db, "transactions"), (snapshot) => {
-        const transactionsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
+        const transactionsData = snapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() } as Transaction))
+            .filter(t => t.id); // Ensure transaction has a valid ID
         
         if (user?.role === 'employee') {
             setTransactions(transactionsData.filter(t => t.employeeId === user.employeeId));
