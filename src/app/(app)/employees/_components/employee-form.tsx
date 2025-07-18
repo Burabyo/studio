@@ -45,7 +45,7 @@ interface EmployeeFormProps {
 }
 
 export function EmployeeForm({ setDialogOpen, onSubmit, employee }: EmployeeFormProps) {
-  const { currency } = useCurrency();
+  const { company } = useCurrency();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const form = useForm<EmployeeFormValues>({
@@ -153,8 +153,8 @@ export function EmployeeForm({ setDialogOpen, onSubmit, employee }: EmployeeForm
               <FormItem>
                 <FormLabel>
                   {form.watch("employmentType") === "Monthly Salary"
-                    ? `Monthly Salary (${currency})`
-                    : `Daily Rate (${currency})`}
+                    ? `Monthly Salary (${company?.currency})`
+                    : `Daily Rate (${company?.currency})`}
                 </FormLabel>
                 <FormControl>
                   <Input type="number" placeholder="5000" {...field} />

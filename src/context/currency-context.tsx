@@ -1,91 +1,109 @@
+
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
-
-type Currency = 'USD' | 'RWF';
-
-export interface RecurringContribution {
-  name: string;
-  percentage: number;
-}
-
-export interface PayslipInfo {
-    companyName: string;
-    companyTagline: string;
-    companyContact: string;
-}
+import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useAuth } from './auth-context';
+import type { Company, RecurringContribution } from '@/lib/types';
+import { v4 as uuidv4 } from 'uuid';
 
 interface CurrencyContextType {
-  currency: Currency;
-  setCurrency: (currency: Currency) => void;
+  company: Company | null;
+  loading: boolean;
   formatCurrency: (value: number) => string;
   getCurrencySymbol: () => string;
-  taxRate: number;
-  setTaxRate: (rate: number) => void;
-  recurringContributions: RecurringContribution[];
-  addContribution: (contribution: RecurringContribution) => void;
-  editContribution: (index: number, contribution: RecurringContribution) => void;
-  deleteContribution: (index: number) => void;
-  payslipInfo: PayslipInfo;
-  setPayslipInfo: (info: PayslipInfo) => void;
+  updateCompany: (data: Partial<Company>) => Promise<void>;
+  addContribution: (contribution: Omit<RecurringContribution, 'id'>) => void;
+  editContribution: (id: string, contribution: Partial<RecurringContribution>) => void;
+  deleteContribution: (id: string) => void;
 }
 
 const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined);
 
 export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
-  const [currency, setCurrency] = useState<Currency>('USD');
-  const [taxRate, setTaxRate] = useState(20); // Default 20%
-  const [recurringContributions, setRecurringContributions] = useState<RecurringContribution[]>([
-    { name: 'Pension Fund', percentage: 5 } // Default 5%
-  ]);
-  const [payslipInfo, setPayslipInfo] = useState<PayslipInfo>({
-    companyName: 'PayPulse Inc.',
-    companyTagline: 'Your Trusted Payroll Partner',
-    companyContact: 'contact@paypulse.com'
-  });
+  const { user } = useAuth();
+  const [company, setCompany] = useState<Company | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const addContribution = (contribution: RecurringContribution) => {
-    setRecurringContributions([...recurringContributions, contribution]);
+  useEffect(() => {
+    if (!user || !user.companyId) {
+      setCompany(null);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    const companyRef = doc(db, 'companies', user.companyId);
+    const unsubscribe = onSnapshot(companyRef, (doc) => {
+      if (doc.exists()) {
+        setCompany(doc.data() as Company);
+      } else {
+        console.error("Company not found!");
+        setCompany(null);
+      }
+      setLoading(false);
+    }, (error) => {
+        console.error("Error fetching company data:", error);
+        setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  const updateCompany = async (data: Partial<Company>) => {
+    if (!user?.companyId) return;
+    const companyRef = doc(db, 'companies', user.companyId);
+    await updateDoc(companyRef, data);
+  };
+  
+  const addContribution = (contribution: Omit<RecurringContribution, 'id'>) => {
+    if (!company) return;
+    const newContribution = { ...contribution, id: uuidv4() };
+    const updatedContributions = [...company.recurringContributions, newContribution];
+    updateCompany({ recurringContributions: updatedContributions });
   };
 
-  const editContribution = (index: number, contribution: RecurringContribution) => {
-    const newContributions = [...recurringContributions];
-    newContributions[index] = contribution;
-    setRecurringContributions(newContributions);
+  const editContribution = (id: string, contribution: Partial<RecurringContribution>) => {
+    if (!company) return;
+    const updatedContributions = company.recurringContributions.map(c => 
+      c.id === id ? { ...c, ...contribution } : c
+    );
+    updateCompany({ recurringContributions: updatedContributions });
   };
 
-  const deleteContribution = (index: number) => {
-    setRecurringContributions(recurringContributions.filter((_, i) => i !== index));
+  const deleteContribution = (id: string) => {
+    if (!company) return;
+    const updatedContributions = company.recurringContributions.filter((c) => c.id !== id);
+    updateCompany({ recurringContributions: updatedContributions });
   };
-
 
   const getCurrencySymbol = useCallback(() => {
-    return currency === 'USD' ? '$' : 'FRw';
-  }, [currency]);
+    if (!company) return '$';
+    return company.currency === 'USD' ? '$' : 'FRw';
+  }, [company]);
   
   const formatCurrency = useCallback((value: number) => {
+     if (!company) return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+    
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: currency,
-      minimumFractionDigits: currency === 'RWF' ? 0 : 2,
-      maximumFractionDigits: currency === 'RWF' ? 0 : 2,
+      currency: company.currency,
+      minimumFractionDigits: company.currency === 'RWF' ? 0 : 2,
+      maximumFractionDigits: company.currency === 'RWF' ? 0 : 2,
     }).format(value);
-  }, [currency]);
+  }, [company]);
 
   return (
     <CurrencyContext.Provider value={{ 
-      currency, 
-      setCurrency, 
+      company,
+      loading,
       formatCurrency, 
       getCurrencySymbol,
-      taxRate,
-      setTaxRate,
-      recurringContributions,
+      updateCompany,
       addContribution,
       editContribution,
-      deleteContribution,
-      payslipInfo,
-      setPayslipInfo
+      deleteContribution
     }}>
       {children}
     </CurrencyContext.Provider>

@@ -55,7 +55,7 @@ export function PayslipGenerator() {
   const { user } = useAuth();
   const { employees } = useEmployeeContext();
   const { transactions } = useTransactionContext();
-  const { currency, getCurrencySymbol, taxRate, recurringContributions, payslipInfo } = useCurrency();
+  const { company, getCurrencySymbol } = useCurrency();
 
   const [isLoading, setIsLoading] = useState(false);
   const [generatedPayslip, setGeneratedPayslip] = useState<string | null>(null);
@@ -83,6 +83,17 @@ export function PayslipGenerator() {
   const onSubmit = async (values: PayslipFormValues) => {
     setIsLoading(true);
     setGeneratedPayslip(null);
+
+    if (!company) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Company settings not loaded.",
+      });
+      setIsLoading(false);
+      return;
+    }
+
     const employee = employees.find((e) => e.id === values.employeeId);
     if (!employee) {
       toast({
@@ -115,9 +126,9 @@ export function PayslipGenerator() {
 
 
     const grossPay = employee.salary + bonuses;
-    const taxAmount = (grossPay * taxRate) / 100;
+    const taxAmount = (grossPay * company.taxRate) / 100;
     
-    const contributionAmounts = recurringContributions.reduce((acc, contrib) => {
+    const contributionAmounts = company.recurringContributions.reduce((acc, contrib) => {
       acc[contrib.name] = (grossPay * contrib.percentage) / 100;
       return acc;
     }, {} as Record<string, number>);
@@ -127,9 +138,9 @@ export function PayslipGenerator() {
     const netPay = grossPay - totalDeductions;
     
     const payslipData: PayslipData = {
-      companyName: payslipInfo.companyName,
-      companyTagline: payslipInfo.companyTagline,
-      companyContact: payslipInfo.companyContact,
+      companyName: company.payslipInfo.companyName,
+      companyTagline: company.payslipInfo.companyTagline,
+      companyContact: company.payslipInfo.companyContact,
       employeeName: employee.name,
       employeeId: employee.id,
       jobTitle: employee.jobTitle,

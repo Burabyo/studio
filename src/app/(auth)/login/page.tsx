@@ -25,6 +25,7 @@ export default function LoginPage() {
   const [signupPassword, setSignupPassword] = useState("");
   const [signupConfirmPassword, setSignupConfirmPassword] = useState("");
   const [signupName, setSignupName] = useState("");
+  const [signupCompanyName, setSignupCompanyName] = useState("");
   const [signupRole, setSignupRole] = useState<UserRole>("admin");
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -50,7 +51,14 @@ export default function LoginPage() {
     }
 
     try {
-      await signup(signupEmail, signupPassword, signupName, signupRole, signupRole === 'employee' ? employeeId : undefined);
+      await signup({
+        email: signupEmail, 
+        password: signupPassword, 
+        name: signupName, 
+        role: signupRole, 
+        companyName: signupRole === 'admin' ? signupCompanyName : undefined,
+        employeeId: signupRole === 'employee' ? employeeId : undefined
+      });
       router.push('/dashboard');
       toast({ title: "Account Created", description: "Welcome to PayPulse!" });
     } catch (error: any) {
@@ -128,7 +136,7 @@ export default function LoginPage() {
                             </div>
                             <div className="grid gap-4">
                                 <div className="grid gap-2">
-                                    <Label>Role</Label>
+                                    <Label>Account Type</Label>
                                     <RadioGroup 
                                     defaultValue={signupRole} 
                                     onValueChange={(value) => setSignupRole(value as UserRole)}
@@ -136,11 +144,7 @@ export default function LoginPage() {
                                     >
                                     <div className="flex items-center space-x-2">
                                         <RadioGroupItem value="admin" id="admin" />
-                                        <Label htmlFor="admin">Admin</Label>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="manager" id="manager" />
-                                        <Label htmlFor="manager">Manager</Label>
+                                        <Label htmlFor="admin">Company Admin</Label>
                                     </div>
                                     <div className="flex items-center space-x-2">
                                         <RadioGroupItem value="employee" id="employee" />
@@ -149,13 +153,27 @@ export default function LoginPage() {
                                     </RadioGroup>
                                 </div>
 
+                                {signupRole === 'admin' && (
+                                     <div className="grid gap-2">
+                                        <Label htmlFor="signup-company-name">Company Name</Label>
+                                        <Input 
+                                            id="signup-company-name" 
+                                            type="text" 
+                                            placeholder="Your Company Inc." 
+                                            required 
+                                            value={signupCompanyName} 
+                                            onChange={(e) => setSignupCompanyName(e.target.value)}
+                                        />
+                                    </div>
+                                )}
+                                
                                 {signupRole === 'employee' && (
                                     <div className="grid gap-2">
                                         <Label htmlFor="signup-employee-id">Employee ID</Label>
                                         <Input 
                                             id="signup-employee-id" 
                                             type="text" 
-                                            placeholder="Your unique employee ID" 
+                                            placeholder="Your unique employee ID provided by your admin" 
                                             required 
                                             value={employeeId} 
                                             onChange={(e) => setEmployeeId(e.target.value)}

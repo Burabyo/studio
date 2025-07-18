@@ -23,14 +23,16 @@ export const EmployeeProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   
   useEffect(() => {
-    if (!user) {
+    if (!user || !user.companyId) {
         setEmployees([]);
         setLoading(false);
         return;
     };
 
     setLoading(true);
-    const unsubscribe = onSnapshot(collection(db, "employees"), (snapshot) => {
+    const employeesCollectionRef = collection(db, `companies/${user.companyId}/employees`);
+
+    const unsubscribe = onSnapshot(employeesCollectionRef, (snapshot) => {
         const employeesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Employee));
         
         if (user?.role === 'employee') {
@@ -49,9 +51,10 @@ export const EmployeeProvider = ({ children }: { children: ReactNode }) => {
 
 
   const addEmployee = async (employeeData: Employee) => {
+    if (!user?.companyId) throw new Error("User is not associated with a company.");
     try {
         const { id, ...data } = employeeData;
-        const employeeRef = doc(db, "employees", id);
+        const employeeRef = doc(db, `companies/${user.companyId}/employees`, id);
         await setDoc(employeeRef, data);
     } catch (error) {
         console.error("Error adding employee: ", error);
@@ -60,9 +63,10 @@ export const EmployeeProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const editEmployee = async (updatedEmployee: Employee) => {
+    if (!user?.companyId) throw new Error("User is not associated with a company.");
     try {
         const { id, ...data } = updatedEmployee;
-        const employeeRef = doc(db, "employees", id);
+        const employeeRef = doc(db, `companies/${user.companyId}/employees`, id);
         await updateDoc(employeeRef, data);
     } catch (error) {
         console.error("Error updating employee: ", error);
@@ -71,8 +75,9 @@ export const EmployeeProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const deleteEmployee = async (id: string) => {
+    if (!user?.companyId) throw new Error("User is not associated with a company.");
     try {
-        const employeeRef = doc(db, "employees", id);
+        const employeeRef = doc(db, `companies/${user.companyId}/employees`, id);
         await deleteDoc(employeeRef);
     } catch (error) {
         console.error("Error deleting employee: ", error);

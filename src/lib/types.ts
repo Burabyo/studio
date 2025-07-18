@@ -19,3 +19,24 @@ export type Transaction = {
   description: string;
   status: 'Pending' | 'Approved' | 'Paid' | 'Rejected';
 };
+
+export interface Company {
+  id: string;
+  name: string;
+  currency: 'USD' | 'RWF';
+  taxRate: number;
+  recurringContributions: RecurringContribution[];
+  payslipInfo: PayslipInfo;
+}
+
+export interface RecurringContribution {
+  id: string; // Use a unique ID for each contribution
+  name: string;
+  percentage: number;
+}
+
+export interface PayslipInfo {
+    companyName: string;
+    companyTagline: string;
+    companyContact: string;
+}

@@ -52,7 +52,7 @@ interface TransactionFormProps {
 }
 
 export function TransactionForm({ setDialogOpen, onSubmit, transaction, employees }: TransactionFormProps) {
-  const { currency } = useCurrency();
+  const { company } = useCurrency();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(formSchema),
@@ -60,7 +60,6 @@ export function TransactionForm({ setDialogOpen, onSubmit, transaction, employee
         ...transaction, 
         date: new Date(transaction.date) 
     } : {
-      id: "",
       employeeId: "",
       date: new Date(),
       type: "Advance",
@@ -75,7 +74,6 @@ export function TransactionForm({ setDialogOpen, onSubmit, transaction, employee
         ...transaction, 
         date: new Date(transaction.date) 
     } : {
-      id: "",
       employeeId: "",
       date: new Date(),
       type: "Advance",
@@ -253,7 +251,7 @@ export function TransactionForm({ setDialogOpen, onSubmit, transaction, employee
             name="amount"
             render={({ field }) => (
               <FormItem className="md:col-span-2">
-                <FormLabel>Amount ({currency})</FormLabel>
+                <FormLabel>Amount ({company?.currency})</FormLabel>
                 <FormControl>
                   <Input type="number" placeholder="500" {...field} />
                 </FormControl>

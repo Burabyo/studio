@@ -11,7 +11,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc, query, where, getDocs, collection } from "firebase/firestore"; 
+import { doc, getDoc, setDoc, updateDoc, query, where, getDocs, collection, writeBatch } from "firebase/firestore"; 
 import { app, db } from '@/lib/firebase';
 
 export type UserRole = 'admin' | 'manager' | 'employee';
@@ -22,6 +22,16 @@ interface User {
   name: string;
   role: UserRole;
   employeeId?: string; 
+  companyId: string | null;
+}
+
+interface SignupParams {
+    email: string;
+    password: string;
+    name: string;
+    role: UserRole;
+    companyName?: string; // For new admins creating a company
+    employeeId?: string; // For employees linking to a record
 }
 
 interface AuthContextType {
@@ -29,7 +39,7 @@ interface AuthContextType {
   firebaseUser: FirebaseUser | null;
   loading: boolean;
   login: (email: string, pass: string) => Promise<any>;
-  signup: (email: string, pass: string, name: string, role: UserRole, employeeId?: string) => Promise<any>;
+  signup: (params: SignupParams) => Promise<any>;
   logout: () => void;
 }
 
@@ -58,16 +68,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             name: userData.name || fbUser.email || 'User',
             role: userData.role || 'employee',
             employeeId: userData.employeeId,
+            companyId: userData.companyId || null,
           };
           setUser(appUser);
         } else {
-             const appUser: User = {
-                uid: fbUser.uid,
-                email: fbUser.email,
-                name: fbUser.email || 'User',
-                role: 'employee',
-            };
-            setUser(appUser);
+            console.warn("User document not found for authenticated user:", fbUser.uid);
+            // This case should ideally not happen after signup is complete.
+            // You might want to log out the user or create a default user doc.
+            setUser(null);
         }
 
       } else {
@@ -85,50 +93,93 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return signInWithEmailAndPassword(auth, email, pass);
   };
   
-  const signup = async (email: string, pass: string, name: string, role: UserRole, employeeId?: string) => {
+  const signup = async ({ email, password, name, role, companyName, employeeId }: SignupParams) => {
       setLoading(true);
 
-      if (role === 'employee') {
-        if (!employeeId) {
-            throw new Error("Employee ID is required for employee role.");
-        }
-        
-        // 1. Check if an employee with this ID exists
-        const employeeRef = doc(db, "employees", employeeId);
-        const employeeDoc = await getDoc(employeeRef);
-        if (!employeeDoc.exists()) {
-            throw new Error(`Employee with ID "${employeeId}" not found.`);
-        }
-        
-        // 2. Check if this employee ID is already linked to a user account
-        const usersQuery = query(collection(db, "users"), where("employeeId", "==", employeeId));
-        const querySnapshot = await getDocs(usersQuery);
-        if (!querySnapshot.empty) {
-            throw new Error(`Employee ID "${employeeId}" is already linked to another account.`);
-        }
-      }
-      
-      const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const fbUser = userCredential.user;
+      const batch = writeBatch(db);
+
+      let companyId: string;
       
+      // Admin role: Create a new company
+      if (role === 'admin') {
+        if (!companyName) throw new Error("Company name is required for admin sign-up.");
+        
+        const newCompanyRef = doc(collection(db, "companies"));
+        companyId = newCompanyRef.id;
+
+        const companyData = {
+          id: companyId,
+          name: companyName,
+          currency: 'USD',
+          taxRate: 20,
+          recurringContributions: [
+            { id: 'pension', name: 'Pension Fund', percentage: 5 }
+          ],
+          payslipInfo: {
+            companyName: companyName,
+            companyTagline: `Payroll for ${companyName}`,
+            companyContact: `contact@${companyName.toLowerCase().replace(/\s+/g, '')}.com`
+          }
+        };
+        batch.set(newCompanyRef, companyData);
+      }
+      // Employee role: Find the company they belong to
+      else if (role === 'employee') {
+        if (!employeeId) throw new Error("Employee ID is required for employee sign-up.");
+        
+        const companiesQuery = query(collection(db, "companies"), where('id', '!=', ''));
+        const companiesSnapshot = await getDocs(companiesQuery);
+        let found = false;
+        
+        for (const companyDoc of companiesSnapshot.docs) {
+            const employeeRef = doc(db, `companies/${companyDoc.id}/employees`, employeeId);
+            const employeeDoc = await getDoc(employeeRef);
+
+            if (employeeDoc.exists()) {
+                const usersQuery = query(collection(db, "users"), where("employeeId", "==", employeeId), where("companyId", "==", companyDoc.id));
+                const userSnapshot = await getDocs(usersQuery);
+                if (!userSnapshot.empty) {
+                    throw new Error(`Employee ID "${employeeId}" is already linked to another account.`);
+                }
+                companyId = companyDoc.id;
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            await fbUser.delete(); // Clean up created user if validation fails
+            throw new Error(`Employee with ID "${employeeId}" not found in any company.`);
+        }
+      } else {
+         await fbUser.delete();
+         throw new Error("Invalid role for signup.");
+      }
+
       const userProfileData: any = {
         uid: fbUser.uid,
         name,
         email,
         role,
+        companyId: companyId!,
       };
 
       if (role === 'employee' && employeeId) {
         userProfileData.employeeId = employeeId;
       }
       
-      await setDoc(doc(db, "users", fbUser.uid), userProfileData);
+      const userDocRef = doc(db, "users", fbUser.uid);
+      batch.set(userDocRef, userProfileData);
+
+      await batch.commit();
 
       const appUser: User = {
         uid: fbUser.uid,
         email: fbUser.email,
         name: name,
         role: role,
+        companyId: companyId!,
         employeeId: userProfileData.employeeId,
       };
       setUser(appUser);

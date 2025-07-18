@@ -23,17 +23,18 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) {
+    if (!user || !user.companyId) {
         setTransactions([]);
         setLoading(false);
         return;
     }
 
     setLoading(true);
-    const unsubscribe = onSnapshot(collection(db, "transactions"), (snapshot) => {
+    const transactionsCollectionRef = collection(db, `companies/${user.companyId}/transactions`);
+
+    const unsubscribe = onSnapshot(transactionsCollectionRef, (snapshot) => {
         const transactionsData = snapshot.docs
-            .map(doc => ({ id: doc.id, ...doc.data() } as Transaction))
-            .filter(t => t.id); // Ensure transaction has a valid ID
+            .map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
         
         if (user?.role === 'employee') {
             setTransactions(transactionsData.filter(t => t.employeeId === user.employeeId));
@@ -50,8 +51,9 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
   }, [user]);
 
   const addTransaction = async (transaction: Omit<Transaction, 'id'>) => {
+    if (!user?.companyId) throw new Error("User is not associated with a company.");
     try {
-        await addDoc(collection(db, "transactions"), transaction);
+        await addDoc(collection(db, `companies/${user.companyId}/transactions`), transaction);
     } catch (error) {
         console.error("Error adding transaction: ", error);
         throw error;
@@ -59,8 +61,9 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const editTransaction = async (updatedTransaction: Transaction) => {
+    if (!user?.companyId) throw new Error("User is not associated with a company.");
     try {
-        const transactionRef = doc(db, "transactions", updatedTransaction.id);
+        const transactionRef = doc(db, `companies/${user.companyId}/transactions`, updatedTransaction.id);
         const { id, ...data } = updatedTransaction;
         await updateDoc(transactionRef, data);
     } catch (error) {
@@ -70,8 +73,9 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const deleteTransaction = async (id: string) => {
+    if (!user?.companyId) throw new Error("User is not associated with a company.");
     try {
-        const transactionRef = doc(db, "transactions", id);
+        const transactionRef = doc(db, `companies/${user.companyId}/transactions`, id);
         await deleteDoc(transactionRef);
     } catch (error) {
         console.error("Error deleting transaction: ", error);

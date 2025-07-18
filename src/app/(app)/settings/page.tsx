@@ -4,7 +4,7 @@
 import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useCurrency, RecurringContribution } from "@/context/currency-context";
+import { useCurrency, type RecurringContribution } from "@/context/currency-context";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
@@ -78,10 +78,10 @@ function ContributionForm({ setDialogOpen, onSubmit, contribution }: { setDialog
 
 
 export default function SettingsPage() {
-  const { currency, setCurrency, taxRate, setTaxRate, recurringContributions, addContribution, editContribution, deleteContribution, payslipInfo, setPayslipInfo } = useCurrency();
+  const { company, updateCompany, addContribution, editContribution, deleteContribution, loading } = useCurrency();
   const { user } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
-  const [selectedContribution, setSelectedContribution] = React.useState<{ contribution: RecurringContribution, index: number } | null>(null);
+  const [selectedContribution, setSelectedContribution] = React.useState<RecurringContribution | null>(null);
 
   if (user?.role !== 'admin') {
     return (
@@ -95,6 +95,10 @@ export default function SettingsPage() {
         </div>
     );
   }
+  
+  if (loading || !company) {
+      return <div>Loading company settings...</div>
+  }
 
   const handleAddContribution = (values: ContributionFormValues) => {
     addContribution(values);
@@ -103,18 +107,18 @@ export default function SettingsPage() {
 
   const handleEditContribution = (values: ContributionFormValues) => {
     if (selectedContribution) {
-      editContribution(selectedContribution.index, values);
+      editContribution(selectedContribution.id, values);
       toast({ title: "Contribution Updated" });
     }
   };
 
-  const handleDeleteContribution = (index: number) => {
-    deleteContribution(index);
+  const handleDeleteContribution = (id: string) => {
+    deleteContribution(id);
     toast({ title: "Contribution Deleted", variant: "destructive" });
   };
   
-  const openEditDialog = (contribution: RecurringContribution, index: number) => {
-    setSelectedContribution({ contribution, index });
+  const openEditDialog = (contribution: RecurringContribution) => {
+    setSelectedContribution(contribution);
     setIsDialogOpen(true);
   };
 
@@ -123,32 +127,43 @@ export default function SettingsPage() {
     setIsDialogOpen(true);
   }
 
+  const handleFieldChange = (field: string, value: any) => {
+    updateCompany({ [field]: value });
+  };
+  
   const handlePayslipInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setPayslipInfo({
-        ...payslipInfo,
-        [e.target.name]: e.target.value
+    updateCompany({ 
+        payslipInfo: {
+            ...company.payslipInfo,
+            [e.target.name]: e.target.value,
+        }
     });
   }
+
 
   return (
     <div className="space-y-6">
        <header>
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
         <p className="text-muted-foreground">
-          Configure application settings, tax brackets, and contributions.
+          Configure company settings, tax rates, and contributions.
         </p>
       </header>
       <Card>
         <CardHeader>
-            <CardTitle>Application Configuration</CardTitle>
-            <CardDescription>Configure the default currency for the application.</CardDescription>
+            <CardTitle>Company Configuration</CardTitle>
+            <CardDescription>Manage your company name and default currency.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+           <div className="space-y-2">
+              <Label htmlFor="companyName">Company Name</Label>
+              <Input id="companyName" name="name" value={company.name} onChange={(e) => handleFieldChange('name', e.target.value)} placeholder="e.g., PayPulse Inc."/>
+          </div>
           <div className="space-y-2">
             <Label>Currency</Label>
              <RadioGroup 
-                defaultValue={currency} 
-                onValueChange={(value) => setCurrency(value as 'USD' | 'RWF')}
+                value={company.currency} 
+                onValueChange={(value) => handleFieldChange('currency', value as 'USD' | 'RWF')}
                 className="flex items-center space-x-4"
               >
               <div className="flex items-center space-x-2">
@@ -171,16 +186,16 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
                <div className="space-y-2">
-                  <Label htmlFor="companyName">Company Name</Label>
-                  <Input id="companyName" name="companyName" value={payslipInfo.companyName} onChange={handlePayslipInfoChange} placeholder="e.g., PayPulse Inc."/>
+                  <Label htmlFor="payslipCompanyName">Company Name on Payslip</Label>
+                  <Input id="payslipCompanyName" name="companyName" value={company.payslipInfo.companyName} onChange={handlePayslipInfoChange} placeholder="e.g., PayPulse Inc."/>
               </div>
               <div className="space-y-2">
                   <Label htmlFor="companyTagline">Company Tagline / Header</Label>
-                  <Input id="companyTagline" name="companyTagline" value={payslipInfo.companyTagline} onChange={handlePayslipInfoChange} placeholder="e.g., Your Trusted Payroll Partner"/>
+                  <Input id="companyTagline" name="companyTagline" value={company.payslipInfo.companyTagline} onChange={handlePayslipInfoChange} placeholder="e.g., Your Trusted Payroll Partner"/>
               </div>
               <div className="space-y-2">
                   <Label htmlFor="companyContact">Contact Information</Label>
-                  <Input id="companyContact" name="companyContact" value={payslipInfo.companyContact} onChange={handlePayslipInfoChange} placeholder="e.g., contact@paypulse.com | +1 234 567 890"/>
+                  <Input id="companyContact" name="companyContact" value={company.payslipInfo.companyContact} onChange={handlePayslipInfoChange} placeholder="e.g., contact@paypulse.com | +1 234 567 890"/>
               </div>
           </CardContent>
       </Card>
@@ -196,8 +211,8 @@ export default function SettingsPage() {
             <Input 
               id="tax-rate" 
               type="number"
-              value={taxRate}
-              onChange={(e) => setTaxRate(parseFloat(e.target.value) || 0)}
+              value={company.taxRate}
+              onChange={(e) => handleFieldChange('taxRate', parseFloat(e.target.value) || 0)}
               className="max-w-xs"
               placeholder="e.g., 20"
             />
@@ -225,7 +240,7 @@ export default function SettingsPage() {
                   <ContributionForm 
                     setDialogOpen={setIsDialogOpen}
                     onSubmit={selectedContribution ? handleEditContribution : handleAddContribution}
-                    contribution={selectedContribution?.contribution || null}
+                    contribution={selectedContribution || null}
                   />
                 </DialogContent>
               </Dialog>
@@ -240,8 +255,8 @@ export default function SettingsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {recurringContributions.map((c, index) => (
-                    <TableRow key={index}>
+                  {company.recurringContributions.map((c) => (
+                    <TableRow key={c.id}>
                       <TableCell className="font-medium">{c.name}</TableCell>
                       <TableCell>{c.percentage}%</TableCell>
                       <TableCell className="text-right">
@@ -253,7 +268,7 @@ export default function SettingsPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openEditDialog(c, index)}>
+                            <DropdownMenuItem onClick={() => openEditDialog(c)}>
                               <Pencil className="mr-2 h-4 w-4" />
                               Edit
                             </DropdownMenuItem>
@@ -273,7 +288,7 @@ export default function SettingsPage() {
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleDeleteContribution(index)}>
+                                  <AlertDialogAction onClick={() => handleDeleteContribution(c.id)}>
                                     Delete
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
