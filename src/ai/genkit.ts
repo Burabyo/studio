@@ -5,5 +5,5 @@ export const ai = genkit({
   plugins: [googleAI({
     projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
   })],
-  model: 'googleai/gemini-2.0-flash',
+  model: 'googleai/gemini-1.5-flash',
 });
