@@ -11,7 +11,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, query, where, getDocs, collection, writeBatch, limit } from "firebase/firestore"; 
+import { doc, getDoc, setDoc, query, where, getDocs, collection, writeBatch, limit, collectionGroup } from "firebase/firestore"; 
 import { app, db } from '@/lib/firebase';
 import type { Employee } from '@/lib/types';
 
@@ -129,32 +129,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       else { // 'employee' or 'manager' signup flow
         if (!employeeId) throw new Error("Employee ID is required for employee sign-up.");
         
-        const companiesQuery = query(collection(db, "companies"));
-        const companiesSnapshot = await getDocs(companiesQuery);
-        let foundEmployeeRecord: Employee | null = null;
-        let foundCompanyId: string | null = null;
-        
-        for (const companyDoc of companiesSnapshot.docs) {
-            const employeeRef = doc(db, `companies/${companyDoc.id}/employees`, employeeId);
-            const employeeDoc = await getDoc(employeeRef);
+        // Use a collection group query to find the employee across all companies.
+        const employeeQuery = query(
+            collectionGroup(db, 'employees'), 
+            where('id', '==', employeeId), 
+            limit(1)
+        );
 
-            if (employeeDoc.exists()) {
-                const usersQuery = query(collection(db, "users"), where("employeeId", "==", employeeId), where("companyId", "==", companyDoc.id), limit(1));
-                const userSnapshot = await getDocs(usersQuery);
-                if (!userSnapshot.empty) {
-                    throw new Error(`Employee ID "${employeeId}" is already linked to another account.`);
-                }
-                foundCompanyId = companyDoc.id;
-                foundEmployeeRecord = { id: employeeDoc.id, ...employeeDoc.data() } as Employee;
-                break;
-            }
-        }
-        if (!foundEmployeeRecord || !foundCompanyId) {
-            await fbUser.delete();
+        const employeeQuerySnapshot = await getDocs(employeeQuery);
+
+        if (employeeQuerySnapshot.empty) {
+            await fbUser.delete(); // Clean up the created auth user
             throw new Error(`Employee with ID "${employeeId}" not found in any company.`);
         }
+        
+        const employeeDoc = employeeQuerySnapshot.docs[0];
+        const foundEmployeeRecord = { id: employeeDoc.id, ...employeeDoc.data() } as Employee;
+        const foundCompanyId = employeeDoc.ref.parent.parent!.id; // companies/{companyId}/employees/{employeeId}
+
+        // Check if this employee ID is already linked to a user account
+        const usersQuery = query(collection(db, "users"), where("employeeId", "==", employeeId), where("companyId", "==", foundCompanyId), limit(1));
+        const userSnapshot = await getDocs(usersQuery);
+        if (!userSnapshot.empty) {
+            await fbUser.delete();
+            throw new Error(`Employee ID "${employeeId}" is already linked to another account.`);
+        }
+        
         companyId = foundCompanyId;
-        finalRole = foundEmployeeRecord.role; // Get role from the employee record
+        finalRole = foundEmployeeRecord.role;
       }
 
       const userProfileData: any = {
@@ -207,3 +209,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+    
