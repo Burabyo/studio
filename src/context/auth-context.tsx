@@ -30,7 +30,7 @@ interface SignupParams {
     email: string;
     password: string;
     name: string;
-    role: 'admin' | 'employee'; // Role from the form determines which flow to use
+    role: 'admin' | 'employee'; // This indicates which form is being used.
     companyName?: string; // For new admins creating a company
     employeeId?: string; // For employees/managers linking to a record
 }
@@ -74,7 +74,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser(appUser);
         } else {
             console.warn("User document not found for authenticated user:", fbUser.uid);
-            // This case should ideally not happen after signup is complete.
             setUser(null);
         }
 
@@ -101,7 +100,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const batch = writeBatch(db);
 
       let companyId: string;
-      let finalRole: UserRole = 'employee';
+      let finalRole: UserRole;
       
       if (role === 'admin') {
         if (!companyName) throw new Error("Company name is required for admin sign-up.");
@@ -129,7 +128,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       else { // 'employee' or 'manager' signup flow
         if (!employeeId) throw new Error("Employee ID is required for employee sign-up.");
         
-        // Use a collection group query to find the employee across all companies.
         const employeeQuery = query(
             collectionGroup(db, 'employees'), 
             where('id', '==', employeeId), 
@@ -139,15 +137,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const employeeQuerySnapshot = await getDocs(employeeQuery);
 
         if (employeeQuerySnapshot.empty) {
-            await fbUser.delete(); // Clean up the created auth user
+            await fbUser.delete();
             throw new Error(`Employee with ID "${employeeId}" not found in any company.`);
         }
         
         const employeeDoc = employeeQuerySnapshot.docs[0];
         const foundEmployeeRecord = { id: employeeDoc.id, ...employeeDoc.data() } as Employee;
-        const foundCompanyId = employeeDoc.ref.parent.parent!.id; // companies/{companyId}/employees/{employeeId}
+        const foundCompanyId = employeeDoc.ref.parent.parent!.id; 
 
-        // Check if this employee ID is already linked to a user account
         const usersQuery = query(collection(db, "users"), where("employeeId", "==", employeeId), where("companyId", "==", foundCompanyId), limit(1));
         const userSnapshot = await getDocs(usersQuery);
         if (!userSnapshot.empty) {
@@ -156,7 +153,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
         
         companyId = foundCompanyId;
-        finalRole = foundEmployeeRecord.role;
+        // This is the crucial fix: get the role from the employee record
+        finalRole = foundEmployeeRecord.role; 
       }
 
       const userProfileData: any = {
@@ -209,5 +207,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-    
