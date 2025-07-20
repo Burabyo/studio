@@ -52,37 +52,28 @@ export function EmployeeTable() {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [selectedEmployee, setSelectedEmployee] = React.useState<Employee | null>(null);
 
-  const handleAddEmployee = async (employee: Omit<Employee, 'id'> & { id: string }) => {
+  const handleAddOrEditEmployee = async (employeeData: Employee) => {
     try {
-      const { id, ...data } = employee;
-      await addEmployee(data, id);
-      toast({
-        title: "Employee Added",
-        description: `${employee.name} has been successfully added.`,
-      });
-      setIsDialogOpen(false);
-    } catch (error) {
-       toast({
-        title: "Error",
-        description: "Could not add employee. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
-  
-  const handleEditEmployee = async (employee: Employee) => {
-    try {
-      await editEmployee(employee);
-      toast({
-          title: "Employee Updated",
-          description: `${employee.name}'s details have been updated.`,
-      });
+      if (selectedEmployee) { // Editing existing employee
+        await editEmployee(employeeData);
+        toast({
+            title: "Employee Updated",
+            description: `${employeeData.name}'s details have been updated.`,
+        });
+      } else { // Adding new employee
+        const { id, ...data } = employeeData;
+        await addEmployee(data, id);
+        toast({
+          title: "Employee Added",
+          description: `${employeeData.name} has been successfully added.`,
+        });
+      }
       setIsDialogOpen(false);
       setSelectedEmployee(null);
-    } catch (error) {
+    } catch (error: any) {
        toast({
         title: "Error",
-        description: "Could not update employee. Please try again.",
+        description: error.message || "Could not save employee. Please check the console for details.",
         variant: "destructive"
       });
     }
@@ -139,7 +130,7 @@ export function EmployeeTable() {
               </DialogHeader>
               <EmployeeForm 
                 setDialogOpen={setIsDialogOpen}
-                onSubmit={selectedEmployee ? handleEditEmployee : handleAddEmployee}
+                onSubmit={handleAddOrEditEmployee}
                 employee={selectedEmployee}
               />
             </DialogContent>
@@ -218,7 +209,7 @@ export function EmployeeTable() {
                                 <AlertDialogDescription>
                                   This action cannot be undone. This will permanently delete the employee record.
                                 </AlertDialogDescription>
-                              </AlertDialogHeader>
+                              </HTMLHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                                 <AlertDialogAction onClick={() => handleDeleteEmployee(employee.id)}>

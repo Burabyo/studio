@@ -25,6 +25,7 @@ import type { Employee } from "@/lib/types";
 import React, { useState } from "react";
 import { useCurrency } from "@/context/currency-context";
 import { Loader2 } from "lucide-react";
+import { v4 as uuidv4 } from "uuid";
 
 const formSchema = z.object({
   id: z.string().min(1, "Employee ID is required."),
@@ -52,7 +53,7 @@ export function EmployeeForm({ setDialogOpen, onSubmit, employee }: EmployeeForm
   const form = useForm<EmployeeFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      id: employee?.id || "",
+      id: employee?.id || `EMP-${uuidv4().substring(0, 4).toUpperCase()}`,
       name: employee?.name || "",
       jobTitle: employee?.jobTitle || "",
       employmentType: employee?.employmentType || "Monthly Salary",
@@ -65,7 +66,7 @@ export function EmployeeForm({ setDialogOpen, onSubmit, employee }: EmployeeForm
 
   React.useEffect(() => {
     form.reset(employee ? employee : {
-      id: "",
+      id: `EMP-${uuidv4().substring(0, 4).toUpperCase()}`,
       name: "",
       jobTitle: "",
       employmentType: "Monthly Salary",

@@ -55,8 +55,10 @@ export const EmployeeProvider = ({ children }: { children: ReactNode }) => {
     try {
         const employeeRef = doc(db, `companies/${user.companyId}/employees`, id);
         await setDoc(employeeRef, employeeData);
-    } catch (error) {
-        console.error("Error adding employee: ", error);
+    } catch (error: any) {
+        console.error("Detailed error adding employee: ", error);
+        console.error("Error Code:", error.code);
+        console.error("Error Message:", error.message);
         throw error;
     }
   };
