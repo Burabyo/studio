@@ -53,21 +53,20 @@ export default function LoginPage() {
     }
 
     try {
-      const roleToSignup: UserRole = activeSignupTab === 'signupAdmin' ? 'admin' : 'employee';
-
+      const isAdminSignup = activeSignupTab === 'signupAdmin';
+      
       await signup({
         email: signupEmail,
         password: signupPassword,
         name: signupName,
-        role: roleToSignup, // This will be ignored for non-admins and determined by the DB record
+        isAdmin: isAdminSignup,
         companyName: signupCompanyName,
         employeeId: employeeId,
       });
      
       router.push('/dashboard');
       toast({ title: "Account Created", description: "Welcome to PayPulse!" });
-    } catch (error: any) {
-       const errorMessage = error.message || (error.code ? error.code.replace('auth/', '').replace(/-/g, ' ') : 'An unknown error occurred.');
+    } catch (error: any)       const errorMessage = error.message || (error.code ? error.code.replace('auth/', '').replace(/-/g, ' ') : 'An unknown error occurred.');
        toast({ variant: "destructive", title: "Sign-up Failed", description: `${errorMessage}.` });
     }
   };

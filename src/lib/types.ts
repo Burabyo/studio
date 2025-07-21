@@ -8,6 +8,7 @@ export type Employee = {
   accountNumber: string;
   salary: number;
   role: 'employee' | 'manager';
+  userId?: string | null; // <-- ADDED: Link to Firebase Auth UID
 };
 
 export type Transaction = {
