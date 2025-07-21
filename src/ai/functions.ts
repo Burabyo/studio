@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview Firebase Functions for PayPulse backend operations.
  */
@@ -5,7 +6,7 @@ import * as admin from 'firebase-admin';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore } from 'firebase-admin/firestore';
 
-// --- This is the fix ---
+// --- THIS IS THE FIX ---
 // Initialize the Firebase Admin SDK.
 // This must be done ONCE for all functions in this file.
 // We check if the app is already initialized to prevent errors during hot-reloading.
