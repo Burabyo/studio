@@ -61,8 +61,7 @@ export function EmployeeTable() {
             description: `${employeeData.name}'s details have been updated.`,
         });
       } else { // Adding new employee
-        const { id, ...data } = employeeData;
-        await addEmployee(data, id);
+        await addEmployee(employeeData);
         toast({
           title: "Employee Added",
           description: `${employeeData.name} has been successfully added.`,
@@ -110,7 +109,7 @@ export function EmployeeTable() {
 
   return (
     <>
-    <div className="flex justify-end">
+    <div className="flex justify-end mb-4">
         {canManage && (
           <Dialog open={isDialogOpen} onOpenChange={(isOpen) => {
             setIsDialogOpen(isOpen);
@@ -209,7 +208,7 @@ export function EmployeeTable() {
                                 <AlertDialogDescription>
                                   This action cannot be undone. This will permanently delete the employee record.
                                 </AlertDialogDescription>
-                              </HTMLHeader>
+                              </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                                 <AlertDialogAction onClick={() => handleDeleteEmployee(employee.id)}>
