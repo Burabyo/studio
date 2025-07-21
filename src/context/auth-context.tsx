@@ -31,9 +31,8 @@ interface SignupParams {
     email: string;
     password: string;
     name: string;
-    role?: UserRole; // Role is now optional as it will be determined
-    companyName?: string; 
     employeeId?: string; 
+    companyName?: string;
 }
 
 interface AuthContextType {
@@ -60,7 +59,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (fbUser) {
         setFirebaseUser(fbUser);
         try {
-          // Use the Firebase Function to get the user profile
           const getUserProfile = httpsCallable(functions, 'getUserProfile');
           const result = await getUserProfile();
           const userData = result.data as any;
@@ -77,7 +75,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } catch (error) {
            console.error("Error fetching user profile via function:", error);
            setUser(null);
-           // Log out the user if their profile is missing or inaccessible
            await signOut(auth);
         }
       } else {
@@ -89,7 +86,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     return () => unsubscribe();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth]);
+  }, [auth, functions]);
 
   const login = async (email: string, pass: string) => {
     setLoading(true);
@@ -99,19 +96,48 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signup = async ({ email, password, name, companyName, employeeId }: SignupParams) => {
       setLoading(true);
 
-      // Determine role based on which fields are provided
-      const role: UserRole = employeeId ? 'employee' : 'admin'; // Simplified logic
+      const isJoining = !!employeeId;
 
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const fbUser = userCredential.user;
       const batch = writeBatch(db);
 
       let companyId: string;
-      let finalRole: UserRole = role;
+      let finalRole: UserRole = 'employee';
       
-      if (role === 'admin') {
+      if (isJoining) {
+        if (!employeeId) throw new Error("Employee ID is required to join a company.");
+        
+        const employeeQuery = query(
+            collectionGroup(db, 'employees'), 
+            where('id', '==', employeeId), 
+            limit(1)
+        );
+
+        const employeeQuerySnapshot = await getDocs(employeeQuery);
+
+        if (employeeQuerySnapshot.empty) {
+            await fbUser.delete();
+            throw new Error(`Employee with ID "${employeeId}" not found in any company.`);
+        }
+        
+        const employeeDoc = employeeQuerySnapshot.docs[0];
+        const foundEmployeeRecord = { id: employeeDoc.id, ...employeeDoc.data() } as Employee;
+        
+        finalRole = foundEmployeeRecord.role; 
+        companyId = employeeDoc.ref.parent.parent!.id; 
+
+        const usersQuery = query(collection(db, "users"), where("employeeId", "==", employeeId), where("companyId", "==", companyId), limit(1));
+        const userSnapshot = await getDocs(usersQuery);
+        if (!userSnapshot.empty) {
+            await fbUser.delete();
+            throw new Error(`Employee ID "${employeeId}" is already linked to another account.`);
+        }
+
+      } else { // Admin flow
         if (!companyName) throw new Error("Company name is required for admin sign-up.");
         
+        finalRole = 'admin';
         const newCompanyRef = doc(collection(db, "companies"));
         companyId = newCompanyRef.id;
 
@@ -131,35 +157,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         };
         batch.set(newCompanyRef, companyData);
       }
-      else { // 'employee' or 'manager' joining flow
-        if (!employeeId) throw new Error("Employee ID is required to join a company.");
-        
-        const employeeQuery = query(
-            collectionGroup(db, 'employees'), 
-            where('id', '==', employeeId), 
-            limit(1)
-        );
-
-        const employeeQuerySnapshot = await getDocs(employeeQuery);
-
-        if (employeeQuerySnapshot.empty) {
-            await fbUser.delete();
-            throw new Error(`Employee with ID "${employeeId}" not found in any company.`);
-        }
-        
-        const employeeDoc = employeeQuerySnapshot.docs[0];
-        const foundEmployeeRecord = { id: employeeDoc.id, ...employeeDoc.data() } as Employee;
-        
-        finalRole = foundEmployeeRecord.role; // Use the role from the database record
-        companyId = employeeDoc.ref.parent.parent!.id; 
-
-        const usersQuery = query(collection(db, "users"), where("employeeId", "==", employeeId), where("companyId", "==", companyId), limit(1));
-        const userSnapshot = await getDocs(usersQuery);
-        if (!userSnapshot.empty) {
-            await fbUser.delete();
-            throw new Error(`Employee ID "${employeeId}" is already linked to another account.`);
-        }
-      }
 
       const userProfileData: any = {
         uid: fbUser.uid,
@@ -169,7 +166,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         companyId: companyId,
       };
 
-      if (finalRole !== 'admin' && employeeId) {
+      if (isJoining) {
         userProfileData.employeeId = employeeId;
       }
       
