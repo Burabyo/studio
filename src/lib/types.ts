@@ -1,6 +1,6 @@
 
 export type Employee = {
-  id: string;
+  id: string; // This is the Employee ID, e.g., "EMP001"
   name: string;
   jobTitle: string;
   employmentType: "Monthly Salary" | "Daily Wages";
@@ -8,7 +8,8 @@ export type Employee = {
   accountNumber: string;
   salary: number;
   role: 'employee' | 'manager';
-  userId?: string | null; // <-- ADDED: Link to Firebase Auth UID
+  userId: string | null; // Link to Firebase Auth UID
+  email: string; // The employee's login email
 };
 
 export type Transaction = {
@@ -32,7 +33,7 @@ export interface Company {
 }
 
 export interface RecurringContribution {
-  id: string; // Use a unique ID for each contribution
+  id:string; // Use a unique ID for each contribution
   name: string;
   percentage: number;
 }
@@ -41,4 +42,13 @@ export interface PayslipInfo {
     companyName: string;
     companyTagline: string;
     companyContact: string;
+}
+
+export type User = {
+    uid: string;
+    email: string | null;
+    name: string | null;
+    role: 'admin' | 'manager' | 'employee';
+    companyId: string | null;
+    employeeId: string;
 }

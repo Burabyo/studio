@@ -5,11 +5,12 @@ import React, { createContext, useContext, useState, ReactNode, useEffect } from
 import type { Employee } from '@/lib/types';
 import { useAuth } from './auth-context';
 import { collection, onSnapshot, doc, deleteDoc, setDoc, updateDoc } from "firebase/firestore";
-import { db } from '@/lib/firebase';
+import { db, functions } from '@/lib/firebase';
+import { httpsCallable } from 'firebase/functions';
 
 interface EmployeeContextType {
   employees: Employee[];
-  addEmployee: (employeeData: Employee) => Promise<void>;
+  addEmployee: (employeeData: Omit<Employee, 'userId'> & {email: string, password?: string}) => Promise<void>;
   editEmployee: (employee: Employee) => Promise<void>;
   deleteEmployee: (id: string) => Promise<void>;
   loading: boolean;
@@ -50,15 +51,18 @@ export const EmployeeProvider = ({ children }: { children: ReactNode }) => {
   }, [user]);
 
 
-  const addEmployee = async (employeeData: Employee) => {
-    if (!user?.companyId) throw new Error("User is not associated with a company.");
+  const addEmployee = async (employeeData: Omit<Employee, 'userId'> & {email: string, password?: string}) => {
+    if (!user?.companyId || user.role !== 'admin') throw new Error("Only admins can create new employees.");
+    if (!employeeData.password) throw new Error("Password is required for new employee account.");
+    
     try {
-        const { id, ...data } = employeeData;
-        const employeeRef = doc(db, `companies/${user.companyId}/employees`, id);
-        await setDoc(employeeRef, data);
+      // This function now securely handles creating the Auth user and the Firestore docs.
+      const createEmployeeAccount = httpsCallable(functions, 'createEmployeeAccount');
+      await createEmployeeAccount(employeeData);
     } catch (error: any) {
         console.error("Detailed error adding employee: ", error);
-        throw error;
+        // The error from the function will be more descriptive.
+        throw new Error(error.message || "Failed to create employee account.");
     }
   };
 
@@ -67,6 +71,9 @@ export const EmployeeProvider = ({ children }: { children: ReactNode }) => {
     try {
         const { id, ...data } = updatedEmployee;
         const employeeRef = doc(db, `companies/${user.companyId}/employees`, id);
+        // We don't want to update email/password from this generic edit form.
+        delete (data as any).email;
+        delete (data as any).password;
         await updateDoc(employeeRef, data);
     } catch (error) {
         console.error("Error updating employee: ", error);
@@ -77,6 +84,7 @@ export const EmployeeProvider = ({ children }: { children: ReactNode }) => {
   const deleteEmployee = async (id: string) => {
     if (!user?.companyId) throw new Error("User is not associated with a company.");
     try {
+        // Future improvement: Call a function to delete the Auth user as well.
         const employeeRef = doc(db, `companies/${user.companyId}/employees`, id);
         await deleteDoc(employeeRef);
     } catch (error) {

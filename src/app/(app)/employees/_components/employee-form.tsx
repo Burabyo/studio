@@ -30,6 +30,8 @@ import { v4 as uuidv4 } from "uuid";
 const formSchema = z.object({
   id: z.string().min(1, "Employee ID is required."),
   name: z.string().min(2, "Name must be at least 2 characters."),
+  email: z.string().email("Please enter a valid email.").optional(),
+  password: z.string().min(6, "Password must be at least 6 characters.").optional(),
   jobTitle: z.string().min(2, "Job title is required."),
   employmentType: z.enum(["Monthly Salary", "Daily Wages"]),
   salary: z.coerce.number().min(0, "Salary/rate must be a positive number."),
@@ -51,7 +53,16 @@ export function EmployeeForm({ setDialogOpen, onSubmit, employee }: EmployeeForm
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const form = useForm<EmployeeFormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema.refine(data => {
+        // If it's a new employee, email and password are required.
+        if (!employee) {
+            return !!data.email && !!data.password;
+        }
+        return true;
+    }, {
+        message: "Email and password are required for new employees.",
+        path: ["email"], // you can specify which field the error belongs to
+    })),
     defaultValues: {
       id: employee?.id || `EMP-${uuidv4().substring(0, 4).toUpperCase()}`,
       name: employee?.name || "",
@@ -61,11 +72,13 @@ export function EmployeeForm({ setDialogOpen, onSubmit, employee }: EmployeeForm
       bankName: employee?.bankName || "",
       accountNumber: employee?.accountNumber || "",
       role: employee?.role || "employee",
+      email: employee?.email || "",
+      password: "",
     },
   });
 
   React.useEffect(() => {
-    form.reset(employee ? employee : {
+    form.reset(employee ? { ...employee, email: employee.email || '' } : {
       id: `EMP-${uuidv4().substring(0, 4).toUpperCase()}`,
       name: "",
       jobTitle: "",
@@ -74,6 +87,8 @@ export function EmployeeForm({ setDialogOpen, onSubmit, employee }: EmployeeForm
       bankName: "",
       accountNumber: "",
       role: "employee",
+      email: "",
+      password: "",
     });
   }, [employee, form]);
 
@@ -113,6 +128,38 @@ export function EmployeeForm({ setDialogOpen, onSubmit, employee }: EmployeeForm
               </FormItem>
             )}
           />
+
+          {!employee && (
+            <>
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Login Email</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="employee@company.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Login Password</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="••••••••" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </>
+          )}
+
           <FormField
             control={form.control}
             name="jobTitle"
@@ -208,7 +255,7 @@ export function EmployeeForm({ setDialogOpen, onSubmit, employee }: EmployeeForm
             control={form.control}
             name="accountNumber"
             render={({ field }) => (
-              <FormItem className="md:col-span-2">
+              <FormItem className={employee ? "md:col-span-2" : ""}>
                 <FormLabel>Bank Account Number</FormLabel>
                 <FormControl>
                   <Input placeholder="1234567890" {...field} />
@@ -229,3 +276,4 @@ export function EmployeeForm({ setDialogOpen, onSubmit, employee }: EmployeeForm
     </Form>
   );
 }
+
