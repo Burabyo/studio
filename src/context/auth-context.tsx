@@ -11,6 +11,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
 } from 'firebase/auth';
+import { getFunctions, httpsCallable } from "firebase/functions";
 import { doc, getDoc, setDoc, query, where, getDocs, collection, writeBatch, limit, collectionGroup } from "firebase/firestore"; 
 import { app, db } from '@/lib/firebase';
 import type { Employee } from '@/lib/types';
@@ -30,7 +31,7 @@ interface SignupParams {
     email: string;
     password: string;
     name: string;
-    role: UserRole;
+    role?: UserRole; // Role is now optional as it will be determined
     companyName?: string; 
     employeeId?: string; 
 }
@@ -52,17 +53,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const auth = getAuth(app);
+  const functions = getFunctions(app);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       if (fbUser) {
         setFirebaseUser(fbUser);
-        
-        const userDocRef = doc(db, "users", fbUser.uid);
-        const userDoc = await getDoc(userDocRef);
+        try {
+          // Use the Firebase Function to get the user profile
+          const getUserProfile = httpsCallable(functions, 'getUserProfile');
+          const result = await getUserProfile();
+          const userData = result.data as any;
 
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
           const appUser: User = {
             uid: fbUser.uid,
             email: fbUser.email,
@@ -72,11 +74,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             companyId: userData.companyId || null,
           };
           setUser(appUser);
-        } else {
-            console.warn("User document not found for authenticated user:", fbUser.uid);
-            setUser(null);
+        } catch (error) {
+           console.error("Error fetching user profile via function:", error);
+           setUser(null);
+           // Log out the user if their profile is missing or inaccessible
+           await signOut(auth);
         }
-
       } else {
         setUser(null);
         setFirebaseUser(null);
@@ -85,6 +88,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => unsubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth]);
 
   const login = async (email: string, pass: string) => {
@@ -92,8 +96,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return signInWithEmailAndPassword(auth, email, pass);
   };
   
-  const signup = async ({ email, password, name, role, companyName, employeeId }: SignupParams) => {
+  const signup = async ({ email, password, name, companyName, employeeId }: SignupParams) => {
       setLoading(true);
+
+      // Determine role based on which fields are provided
+      const role: UserRole = employeeId ? 'employee' : 'admin'; // Simplified logic
 
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const fbUser = userCredential.user;
@@ -143,8 +150,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const employeeDoc = employeeQuerySnapshot.docs[0];
         const foundEmployeeRecord = { id: employeeDoc.id, ...employeeDoc.data() } as Employee;
         
-        // This is the fix: use the role from the database record
-        finalRole = foundEmployeeRecord.role;
+        finalRole = foundEmployeeRecord.role; // Use the role from the database record
         companyId = employeeDoc.ref.parent.parent!.id; 
 
         const usersQuery = query(collection(db, "users"), where("employeeId", "==", employeeId), where("companyId", "==", companyId), limit(1));
