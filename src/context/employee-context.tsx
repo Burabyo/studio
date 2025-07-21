@@ -4,7 +4,7 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import type { Employee } from '@/lib/types';
 import { useAuth } from './auth-context';
-import { collection, onSnapshot, doc, deleteDoc, setDoc, updateDoc } from "firebase/firestore";
+import { collection, onSnapshot, doc, deleteDoc, updateDoc } from "firebase/firestore";
 import { db, functions } from '@/lib/firebase';
 import { httpsCallable } from 'firebase/functions';
 
@@ -52,12 +52,15 @@ export const EmployeeProvider = ({ children }: { children: ReactNode }) => {
 
 
   const addEmployee = async (employeeData: Omit<Employee, 'userId'> & {email: string, password?: string}) => {
-    if (!user?.companyId || user.role !== 'admin') throw new Error("Only admins can create new employees.");
+    if (!user?.companyId || !['admin', 'manager'].includes(user.role)) {
+      throw new Error("Only admins or managers can create new employees.");
+    }
     if (!employeeData.password) throw new Error("Password is required for new employee account.");
     
     try {
       // This function now securely handles creating the Auth user and the Firestore docs.
       const createEmployeeAccount = httpsCallable(functions, 'createEmployeeAccount');
+      // The function gets companyId from the authenticated user's token on the backend.
       await createEmployeeAccount(employeeData);
     } catch (error: any) {
         console.error("Detailed error adding employee: ", error);

@@ -6,7 +6,6 @@ import * as admin from 'firebase-admin';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore } from 'firebase-admin/firestore';
 
-// --- THIS IS THE FIX ---
 // Initialize the Firebase Admin SDK.
 // This must be done ONCE for all functions in this file.
 // We check if the app is already initialized to prevent errors during hot-reloading.
@@ -28,13 +27,16 @@ export const createEmployeeAccount = onCall(async (request) => {
 
   const adminUid = request.auth.uid;
   const adminUserDoc = await db.collection('users').doc(adminUid).get();
+  const adminUserData = adminUserDoc.data();
 
-  if (!adminUserDoc.exists || adminUserDoc.data()?.role !== 'admin') {
-    throw new HttpsError('permission-denied', 'Only administrators can create new employee accounts.');
+  if (!adminUserDoc.exists || !['admin', 'manager'].includes(adminUserData?.role)) {
+    throw new HttpsError('permission-denied', 'Only administrators or managers can create new employee accounts.');
   }
 
   // 2. Validate incoming data
-  const { email, password, companyId, ...employeeData } = request.data;
+  const { email, password, ...employeeData } = request.data;
+  const companyId = adminUserData?.companyId;
+
   if (!email || !password || !companyId || !employeeData.id) {
     throw new HttpsError('invalid-argument', 'Missing required employee data: email, password, companyId, and employee ID.');
   }
@@ -84,6 +86,9 @@ export const createEmployeeAccount = onCall(async (request) => {
     console.error('Error in createEmployeeAccount function:', error);
 
     // Throw a specific error back to the client
+    if (error.code && error.code.startsWith('auth/')) {
+        throw new HttpsError('invalid-argument', error.message);
+    }
     throw new HttpsError('internal', `An unexpected error occurred: ${error.message}`);
   }
 });
