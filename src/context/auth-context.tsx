@@ -14,18 +14,11 @@ import {
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { doc, getDoc, setDoc, query, where, getDocs, collection, writeBatch, limit, collectionGroup } from "firebase/firestore"; 
 import { app, db } from '@/lib/firebase';
-import type { Employee } from '@/lib/types';
+import type { Employee, User as AppUser } from '@/lib/types';
+import { toast } from '@/hooks/use-toast';
 
 export type UserRole = 'admin' | 'manager' | 'employee';
 
-interface User {
-  uid: string;
-  email: string | null;
-  name: string;
-  role: UserRole;
-  employeeId?: string; 
-  companyId: string | null;
-}
 
 interface SignupParams {
     email: string;
@@ -36,7 +29,7 @@ interface SignupParams {
 }
 
 interface AuthContextType {
-  user: User | null;
+  user: AppUser | null;
   firebaseUser: FirebaseUser | null;
   loading: boolean;
   login: (email: string, pass: string) => Promise<any>;
@@ -47,23 +40,28 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const auth = getAuth(app);
-  const functions = getFunctions(app);
+  const functions = getFunctions(app, 'us-central1');
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       if (fbUser) {
         setFirebaseUser(fbUser);
         try {
+          // Use the callable function to fetch the user's profile securely
           const getUserProfile = httpsCallable(functions, 'getUserProfile');
           const result = await getUserProfile();
           const userData = result.data as any;
 
-          const appUser: User = {
+          if (!userData) {
+             throw new Error("User profile data is missing.");
+          }
+
+          const appUser: AppUser = {
             uid: fbUser.uid,
             email: fbUser.email,
             name: userData.name || fbUser.email || 'User',
@@ -72,10 +70,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             companyId: userData.companyId || null,
           };
           setUser(appUser);
-        } catch (error) {
-           console.error("Error fetching user profile via function:", error);
+        } catch (error: any) {
+           console.error("Error fetching user profile via function:", error.code, error.message, error.details);
            setUser(null);
-           await signOut(auth);
+           await signOut(auth); // Sign out if profile fetch fails
         }
       } else {
         setUser(null);
@@ -85,7 +83,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => unsubscribe();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth, functions]);
 
   const login = async (email: string, pass: string) => {
@@ -93,9 +90,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return signInWithEmailAndPassword(auth, email, pass);
   };
   
-  const signup = async ({ email, password, name, companyName, employeeId }: SignupParams) => {
-      setLoading(true);
-
+ const signup = async ({ email, password, name, companyName, employeeId }: SignupParams) => {
+    setLoading(true);
+    try {
       const isJoining = !!employeeId;
 
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -105,7 +102,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       let companyId: string;
       let finalRole: UserRole = 'employee';
       
-      if (isJoining) {
+      if (isJoining) { // Joining an existing company
         if (!employeeId) throw new Error("Employee ID is required to join a company.");
         
         const employeeQuery = query(
@@ -118,23 +115,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         if (employeeQuerySnapshot.empty) {
             await fbUser.delete();
-            throw new Error(`Employee with ID "${employeeId}" not found in any company.`);
+            throw new Error(`Employee with ID "${employeeId}" not found.`);
         }
         
         const employeeDoc = employeeQuerySnapshot.docs[0];
         const foundEmployeeRecord = { id: employeeDoc.id, ...employeeDoc.data() } as Employee;
         
-        finalRole = foundEmployeeRecord.role; 
-        companyId = employeeDoc.ref.parent.parent!.id; 
-
-        const usersQuery = query(collection(db, "users"), where("employeeId", "==", employeeId), where("companyId", "==", companyId), limit(1));
+        const usersQuery = query(collection(db, "users"), where("employeeId", "==", employeeId), limit(1));
         const userSnapshot = await getDocs(usersQuery);
         if (!userSnapshot.empty) {
             await fbUser.delete();
             throw new Error(`Employee ID "${employeeId}" is already linked to another account.`);
         }
+        
+        finalRole = foundEmployeeRecord.role; 
+        companyId = employeeDoc.ref.parent.parent!.id;
 
-      } else { // Admin flow
+      } else { // Admin flow: Creating a new company
         if (!companyName) throw new Error("Company name is required for admin sign-up.");
         
         finalRole = 'admin';
@@ -175,7 +172,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       await batch.commit();
 
-      const appUser: User = {
+      const appUser: AppUser = {
         uid: fbUser.uid,
         email: fbUser.email,
         name: name,
@@ -186,6 +183,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(appUser);
       setFirebaseUser(fbUser);
       return userCredential;
+    } catch (error: any) {
+        console.error("SIGNUP FAILED:", error);
+        toast({
+            title: "Sign-up Failed",
+            description: error.message || "An unknown error occurred.",
+            variant: "destructive"
+        });
+        setLoading(false);
+        throw error;
+    }
   }
 
   const logout = () => {
