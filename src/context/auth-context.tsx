@@ -15,6 +15,7 @@ import { doc, getDoc, setDoc, query, where, getDocs, collection, writeBatch, lim
 import { app, db } from '@/lib/firebase';
 import type { Employee, User as AppUser } from '@/lib/types';
 import { toast } from '@/hooks/use-toast';
+import { createNewCompany } from '@/lib/company';
 
 export type UserRole = 'admin' | 'manager' | 'employee';
 
@@ -53,7 +54,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const userDoc = await getDoc(userDocRef);
 
           if (!userDoc.exists()) {
-             throw new Error("User profile does not exist in Firestore.");
+             // This can happen briefly during signup, so we don't error out immediately.
+             // If it persists, it means the user doc was never created.
+             console.log("User profile not found, likely during signup transition.");
+             // We will let the signup function handle setting the user state.
+             // For a normal login, if the doc is missing, we sign out.
+             if (user === null) { // only sign out if we are not in a signup flow
+                setUser(null);
+                await signOut(auth);
+             }
+             setLoading(false);
+             return;
           }
           const userData = userDoc.data();
 
@@ -79,6 +90,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => unsubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth]);
 
   const login = async (email: string, pass: string) => {
@@ -86,101 +98,50 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return signInWithEmailAndPassword(auth, email, pass);
   };
   
- const signup = async ({ email, password, name, companyName, employeeId }: SignupParams) => {
+  const signup = async ({ email, password, name, companyName, employeeId }: SignupParams) => {
     setLoading(true);
+    let userCredential;
     try {
-      const isJoining = !!employeeId;
+        userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const fbUser = userCredential.user;
 
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const fbUser = userCredential.user;
-      const batch = writeBatch(db);
+        if (employeeId) { // Joining an existing company
+            const employeeQuery = query(collectionGroup(db, 'employees'), where('id', '==', employeeId), limit(1));
+            const employeeSnapshot = await getDocs(employeeQuery);
 
-      let companyId: string;
-      let finalRole: UserRole = 'employee';
-      
-      if (isJoining) { // Joining an existing company
-        if (!employeeId) throw new Error("Employee ID is required to join a company.");
-        
-        const employeeQuery = query(
-            collectionGroup(db, 'employees'), 
-            where('id', '==', employeeId), 
-            limit(1)
-        );
+            if (employeeSnapshot.empty) {
+                throw new Error(`Employee with ID "${employeeId}" not found.`);
+            }
 
-        const employeeQuerySnapshot = await getDocs(employeeQuery);
+            const employeeDoc = employeeSnapshot.docs[0];
+            const employeeData = employeeDoc.data() as Employee;
+            const companyId = employeeDoc.ref.parent.parent!.id;
 
-        if (employeeQuerySnapshot.empty) {
-            await fbUser.delete();
-            throw new Error(`Employee with ID "${employeeId}" not found.`);
+            const userProfile: AppUser = {
+                uid: fbUser.uid, name, email, role: employeeData.role, companyId, employeeId
+            };
+            await setDoc(doc(db, 'users', fbUser.uid), userProfile);
+            setUser(userProfile);
+
+        } else if (companyName) { // Admin creating a new company
+            const { companyId } = await createNewCompany(companyName);
+            const userProfile: AppUser = {
+                uid: fbUser.uid, name, email, role: 'admin', companyId, employeeId: ''
+            };
+            await setDoc(doc(db, 'users', fbUser.uid), userProfile);
+            setUser(userProfile);
+        } else {
+            throw new Error("Signup requires either an Employee ID or a Company Name.");
         }
         
-        const employeeDoc = employeeQuerySnapshot.docs[0];
-        const foundEmployeeRecord = { id: employeeDoc.id, ...employeeDoc.data() } as Employee;
-        
-        const usersQuery = query(collection(db, "users"), where("employeeId", "==", employeeId), limit(1));
-        const userSnapshot = await getDocs(usersQuery);
-        if (!userSnapshot.empty) {
-            await fbUser.delete();
-            throw new Error(`Employee ID "${employeeId}" is already linked to another account.`);
-        }
-        
-        finalRole = foundEmployeeRecord.role; 
-        companyId = employeeDoc.ref.parent.parent!.id;
+        return userCredential;
 
-      } else { // Admin flow: Creating a new company
-        if (!companyName) throw new Error("Company name is required for admin sign-up.");
-        
-        finalRole = 'admin';
-        const newCompanyRef = doc(collection(db, "companies"));
-        companyId = newCompanyRef.id;
-
-        const companyData = {
-          id: companyId,
-          name: companyName,
-          currency: 'USD',
-          taxRate: 20,
-          recurringContributions: [
-            { id: 'pension', name: 'Pension Fund', percentage: 5 }
-          ],
-          payslipInfo: {
-            companyName: companyName,
-            companyTagline: `Payroll for ${companyName}`,
-            companyContact: `contact@${companyName.toLowerCase().replace(/\s+/g, '')}.com`
-          }
-        };
-        batch.set(newCompanyRef, companyData);
-      }
-
-      const userProfileData: any = {
-        uid: fbUser.uid,
-        name,
-        email,
-        role: finalRole,
-        companyId: companyId,
-      };
-
-      if (isJoining) {
-        userProfileData.employeeId = employeeId;
-      }
-      
-      const userDocRef = doc(db, "users", fbUser.uid);
-      batch.set(userDocRef, userProfileData);
-
-      await batch.commit();
-
-      const appUser: AppUser = {
-        uid: fbUser.uid,
-        email: fbUser.email,
-        name: name,
-        role: finalRole,
-        companyId: companyId,
-        employeeId: userProfileData.employeeId,
-      };
-      setUser(appUser);
-      setFirebaseUser(fbUser);
-      return userCredential;
     } catch (error: any) {
-        console.error("SIGNUP FAILED:", error.code, error.message);
+        // If signup fails at any point, delete the created Firebase auth user to allow them to try again.
+        if (userCredential) {
+            await userCredential.user.delete();
+        }
+        console.error("SIGNUP FAILED:", error);
         toast({
             title: "Sign-up Failed",
             description: error.message || "An unknown error occurred.",
@@ -189,7 +150,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false);
         throw error;
     }
-  }
+};
+
 
   const logout = () => {
     signOut(auth).then(() => {
