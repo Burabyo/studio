@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useAuth, UserRole } from "@/context/auth-context";
+import { useAuth } from "@/context/auth-context";
 import { useRouter } from "next/navigation";
 import { PaypulseIcon } from "@/components/icons";
 import { Input } from "@/components/ui/input";
@@ -66,7 +66,8 @@ export default function LoginPage() {
      
       router.push('/dashboard');
       toast({ title: "Account Created", description: "Welcome to PayPulse!" });
-    } catch (error: any)       const errorMessage = error.message || (error.code ? error.code.replace('auth/', '').replace(/-/g, ' ') : 'An unknown error occurred.');
+    } catch (error: any) {
+       const errorMessage = error.message || (error.code ? error.code.replace('auth/', '').replace(/-/g, ' ') : 'An unknown error occurred.');
        toast({ variant: "destructive", title: "Sign-up Failed", description: `${errorMessage}.` });
     }
   };
@@ -272,3 +273,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+    
