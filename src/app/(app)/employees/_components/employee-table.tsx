@@ -105,7 +105,7 @@ export function EmployeeTable() {
     setIsDialogOpen(true);
   }
   
-  const canManage = user?.role === 'admin';
+  const canManage = user?.role === 'admin' || user?.role === 'manager';
 
   return (
     <>
@@ -147,19 +147,19 @@ export function EmployeeTable() {
               <TableHead>Role</TableHead>
               <TableHead>Type</TableHead>
               <TableHead className="text-right">Salary/Rate</TableHead>
-              {user?.role === 'admin' && <TableHead className="text-right">Actions</TableHead>}
+              {canManage && <TableHead className="text-right">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
                 <TableRow>
-                    <TableCell colSpan={user?.role === 'admin' ? 7 : 6} className="h-24 text-center">
+                    <TableCell colSpan={canManage ? 7 : 6} className="h-24 text-center">
                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                     </TableCell>
                 </TableRow>
             ) : employees.length === 0 ? (
                 <TableRow>
-                    <TableCell colSpan={user?.role === 'admin' ? 7 : 6} className="h-24 text-center">
+                    <TableCell colSpan={canManage ? 7 : 6} className="h-24 text-center">
                         No employees found. Add one to get started.
                     </TableCell>
                 </TableRow>
@@ -180,7 +180,7 @@ export function EmployeeTable() {
                     ? formatCurrency(employee.salary)
                     : `${formatCurrency(employee.salary)}/day`}
                 </TableCell>
-                {user?.role === 'admin' && (
+                {canManage && (
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
