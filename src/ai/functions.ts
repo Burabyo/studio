@@ -25,21 +25,22 @@ export const createEmployeeAccount = onCall(async (request) => {
     throw new HttpsError('unauthenticated', 'You must be logged in to create an employee.');
   }
 
+  // 2. Validate incoming data
+  const { email, password, companyId, ...employeeData } = request.data;
+
+  if (!email || !password || !companyId || !employeeData.id) {
+    throw new HttpsError('invalid-argument', 'Missing required data: email, password, companyId, and employee ID.');
+  }
+  
+  // Verify that the caller is an admin or manager of the company they are trying to add to.
   const adminUid = request.auth.uid;
   const adminUserDoc = await db.collection('users').doc(adminUid).get();
   const adminUserData = adminUserDoc.data();
-
-  if (!adminUserDoc.exists || !['admin', 'manager'].includes(adminUserData?.role)) {
-    throw new HttpsError('permission-denied', 'Only administrators or managers can create new employee accounts.');
+  
+  if (!adminUserDoc.exists || adminUserData?.companyId !== companyId || !['admin', 'manager'].includes(adminUserData?.role)) {
+      throw new HttpsError('permission-denied', 'You do not have permission to add employees to this company.');
   }
 
-  // 2. Validate incoming data
-  const { email, password, ...employeeData } = request.data;
-  const companyId = adminUserData?.companyId;
-
-  if (!email || !password || !companyId || !employeeData.id) {
-    throw new HttpsError('invalid-argument', 'Missing required employee data: email, password, companyId, and employee ID.');
-  }
 
   let newUser;
   try {

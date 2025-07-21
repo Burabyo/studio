@@ -58,13 +58,12 @@ export const EmployeeProvider = ({ children }: { children: ReactNode }) => {
     if (!employeeData.password) throw new Error("Password is required for new employee account.");
     
     try {
-      // This function now securely handles creating the Auth user and the Firestore docs.
       const createEmployeeAccount = httpsCallable(functions, 'createEmployeeAccount');
-      // The function gets companyId from the authenticated user's token on the backend.
-      await createEmployeeAccount(employeeData);
+      // Pass the companyId directly from the authenticated user on the client.
+      const payload = { ...employeeData, companyId: user.companyId };
+      await createEmployeeAccount(payload);
     } catch (error: any) {
         console.error("Detailed error adding employee: ", error);
-        // The error from the function will be more descriptive.
         throw new Error(error.message || "Failed to create employee account.");
     }
   };
@@ -74,7 +73,6 @@ export const EmployeeProvider = ({ children }: { children: ReactNode }) => {
     try {
         const { id, ...data } = updatedEmployee;
         const employeeRef = doc(db, `companies/${user.companyId}/employees`, id);
-        // We don't want to update email/password from this generic edit form.
         delete (data as any).email;
         delete (data as any).password;
         await updateDoc(employeeRef, data);
@@ -87,7 +85,6 @@ export const EmployeeProvider = ({ children }: { children: ReactNode }) => {
   const deleteEmployee = async (id: string) => {
     if (!user?.companyId) throw new Error("User is not associated with a company.");
     try {
-        // Future improvement: Call a function to delete the Auth user as well.
         const employeeRef = doc(db, `companies/${user.companyId}/employees`, id);
         await deleteDoc(employeeRef);
     } catch (error) {
