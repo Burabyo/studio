@@ -11,14 +11,12 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
 } from 'firebase/auth';
-import { getFunctions, httpsCallable } from "firebase/functions";
 import { doc, getDoc, setDoc, query, where, getDocs, collection, writeBatch, limit, collectionGroup } from "firebase/firestore"; 
 import { app, db } from '@/lib/firebase';
 import type { Employee, User as AppUser } from '@/lib/types';
 import { toast } from '@/hooks/use-toast';
 
 export type UserRole = 'admin' | 'manager' | 'employee';
-
 
 interface SignupParams {
     email: string;
@@ -45,21 +43,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const auth = getAuth(app);
-  const functions = getFunctions(app, 'us-central1');
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       if (fbUser) {
         setFirebaseUser(fbUser);
         try {
-          // Use the callable function to fetch the user's profile securely
-          const getUserProfile = httpsCallable(functions, 'getUserProfile');
-          const result = await getUserProfile();
-          const userData = result.data as any;
+          const userDocRef = doc(db, "users", fbUser.uid);
+          const userDoc = await getDoc(userDocRef);
 
-          if (!userData) {
-             throw new Error("User profile data is missing.");
+          if (!userDoc.exists()) {
+             throw new Error("User profile does not exist in Firestore.");
           }
+          const userData = userDoc.data();
 
           const appUser: AppUser = {
             uid: fbUser.uid,
@@ -71,7 +67,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           };
           setUser(appUser);
         } catch (error: any) {
-           console.error("Error fetching user profile via function:", error.code, error.message, error.details);
+           console.error("Error fetching user profile from Firestore:", error);
            setUser(null);
            await signOut(auth); // Sign out if profile fetch fails
         }
@@ -83,7 +79,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => unsubscribe();
-  }, [auth, functions]);
+  }, [auth]);
 
   const login = async (email: string, pass: string) => {
     setLoading(true);
@@ -184,7 +180,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setFirebaseUser(fbUser);
       return userCredential;
     } catch (error: any) {
-        console.error("SIGNUP FAILED:", error);
+        console.error("SIGNUP FAILED:", error.code, error.message);
         toast({
             title: "Sign-up Failed",
             description: error.message || "An unknown error occurred.",
