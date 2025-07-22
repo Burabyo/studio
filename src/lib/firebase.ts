@@ -24,13 +24,11 @@ const db = initializeFirestore(app, {
 const auth = getAuth(app);
 const functions = getFunctions(app);
 
-// --- THIS IS THE FIX ---
 // Connect to the local Functions emulator if in development
-// This will make the client-side code call the local function.
-// Note: In a real production build, this would be conditional.
 if (process.env.NODE_ENV === 'development') {
     try {
-        connectFunctionsEmulator(functions, "localhost", 5001);
+        // Note: The Genkit emulator runs on a different port than the standard Functions emulator
+        connectFunctionsEmulator(functions, "127.0.0.1", 5001);
     } catch (e) {
         console.warn("Could not connect to functions emulator. Have you started it with 'npm run genkit:watch'?", e);
     }

@@ -20,5 +20,5 @@ if (admin.apps.length === 0) {
 const db = getFirestore();
 
 // All backend logic for creating an employee has been moved to a standard 
-// Next.js API route at /api/create-employee for stability.
+// Firebase Callable function in src/ai/functions.ts for stability.
 // This file is no longer used for that purpose.

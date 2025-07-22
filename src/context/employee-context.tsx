@@ -5,7 +5,8 @@ import React, { createContext, useContext, useState, ReactNode, useEffect } from
 import type { Employee } from '@/lib/types';
 import { useAuth } from './auth-context';
 import { collection, onSnapshot, doc, deleteDoc, updateDoc } from "firebase/firestore";
-import { db } from '@/lib/firebase';
+import { db, functions } from '@/lib/firebase';
+import { httpsCallable } from 'firebase/functions';
 
 interface EmployeeContextType {
   employees: Employee[];
@@ -16,6 +17,8 @@ interface EmployeeContextType {
 }
 
 const EmployeeContext = createContext<EmployeeContextType | undefined>(undefined);
+
+const createEmployeeAccount = httpsCallable(functions, 'createEmployeeAccount');
 
 export const EmployeeProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
@@ -57,38 +60,22 @@ export const EmployeeProvider = ({ children }: { children: ReactNode }) => {
     if (!employeeData.password) throw new Error("Password is required for new employee account.");
     
     try {
-      const token = await user.firebaseUser?.getIdToken();
-      if (!token) {
-        throw new Error("Authentication token not found.");
-      }
-
       const payload = {
           ...employeeData,
           companyId: user.companyId
       };
 
-      const response = await fetch('/api/create-employee', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(payload),
-      });
+      const result = await createEmployeeAccount(payload);
+      
+      const data = result.data as { success: boolean, error?: string, userId?: string};
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to create employee.");
+      if (!data.success) {
+        throw new Error(data.error || "Failed to create employee in callable function.");
       }
 
     } catch (error: any) {
         console.error("Detailed error adding employee: ", error);
-        // Check if the error is a JSON parsing error, which indicates the API crashed.
-        if (error instanceof SyntaxError) {
-             throw new Error("The server returned an invalid response. Please check the API logs.");
-        }
-        throw new Error(error.message || "An unexpected error occurred.");
+        throw new Error(error.message || "An unexpected error occurred calling the function.");
     }
   };
 
