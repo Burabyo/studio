@@ -5,8 +5,7 @@ import React, { createContext, useContext, useState, ReactNode, useEffect } from
 import type { Employee } from '@/lib/types';
 import { useAuth } from './auth-context';
 import { collection, onSnapshot, doc, deleteDoc, updateDoc } from "firebase/firestore";
-import { db, functions } from '@/lib/firebase';
-import { httpsCallable } from 'firebase/functions';
+import { db } from '@/lib/firebase';
 
 interface EmployeeContextType {
   employees: Employee[];
@@ -58,15 +57,29 @@ export const EmployeeProvider = ({ children }: { children: ReactNode }) => {
     if (!employeeData.password) throw new Error("Password is required for new employee account.");
     
     try {
-      // The function is now named 'createEmployeeAccount' as defined in src/ai/dev.ts
-      const createEmployeeAccountFn = httpsCallable(functions, 'createEmployeeAccount');
-      // Pass the companyId from the authenticated user on the client.
-      const payload = { ...employeeData, companyId: user.companyId };
-      await createEmployeeAccountFn(payload);
+      const token = await user.firebaseUser?.getIdToken();
+      if (!token) {
+        throw new Error("Authentication token not found.");
+      }
+
+      const response = await fetch('/api/create-employee', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ ...employeeData, companyId: user.companyId }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to create employee.");
+      }
+
     } catch (error: any) {
         console.error("Detailed error adding employee: ", error);
-        // The error object from a callable function has a 'message' property.
-        throw new Error(error.message || "Failed to create employee account.");
+        throw new Error(error.message || "An unexpected error occurred.");
     }
   };
 
