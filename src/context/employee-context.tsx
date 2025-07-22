@@ -58,12 +58,14 @@ export const EmployeeProvider = ({ children }: { children: ReactNode }) => {
     if (!employeeData.password) throw new Error("Password is required for new employee account.");
     
     try {
-      const createEmployeeAccount = httpsCallable(functions, 'createEmployeeAccount');
-      // Pass the companyId directly from the authenticated user on the client.
+      // The function is now named 'createEmployeeAccount' as defined in src/ai/dev.ts
+      const createEmployeeAccountFn = httpsCallable(functions, 'createEmployeeAccount');
+      // Pass the companyId from the authenticated user on the client.
       const payload = { ...employeeData, companyId: user.companyId };
-      await createEmployeeAccount(payload);
+      await createEmployeeAccountFn(payload);
     } catch (error: any) {
         console.error("Detailed error adding employee: ", error);
+        // The error object from a callable function has a 'message' property.
         throw new Error(error.message || "Failed to create employee account.");
     }
   };
@@ -73,6 +75,7 @@ export const EmployeeProvider = ({ children }: { children: ReactNode }) => {
     try {
         const { id, ...data } = updatedEmployee;
         const employeeRef = doc(db, `companies/${user.companyId}/employees`, id);
+        // Do not allow email/password changes from this form.
         delete (data as any).email;
         delete (data as any).password;
         await updateDoc(employeeRef, data);
