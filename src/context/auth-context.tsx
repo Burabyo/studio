@@ -15,6 +15,7 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { app, db } from '@/lib/firebase';
 import type { User as AppUser } from '@/lib/types';
 import { createNewCompany } from '@/lib/company';
+import { toast } from '@/hooks/use-toast';
 
 interface SignupParams {
     email: string;
@@ -26,7 +27,6 @@ interface SignupParams {
 
 interface AuthContextType {
   user: AppUser | null;
-  firebaseUser: FirebaseUser | null;
   loading: boolean;
   login: (email: string, pass: string) => Promise<any>;
   signup: (params: SignupParams) => Promise<any>;
@@ -37,7 +37,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<AppUser | null>(null);
-  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const auth = getAuth(app);
@@ -46,7 +45,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       setLoading(true);
       if (fbUser) {
-        setFirebaseUser(fbUser);
         try {
           const userDocRef = doc(db, "users", fbUser.uid);
           const userDoc = await getDoc(userDocRef);
@@ -60,6 +58,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 role: userData.role || 'employee',
                 employeeId: userData.employeeId,
                 companyId: userData.companyId || null,
+                firebaseUser: fbUser,
              };
              setUser(appUser);
           } else {
@@ -75,7 +74,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       } else {
         setUser(null);
-        setFirebaseUser(null);
       }
       setLoading(false);
     });
@@ -102,11 +100,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       const { companyId } = await createNewCompany(companyName);
       
-      const userProfile: AppUser = {
+      const userProfile: Omit<AppUser, 'firebaseUser'> = {
         uid: fbUser.uid, name, email, role: 'admin', companyId, employeeId: ''
       };
       await setDoc(doc(db, 'users', fbUser.uid), userProfile);
-      setUser(userProfile);
+      setUser({...userProfile, firebaseUser: fbUser});
 
       return userCredential;
     } catch (error: any) {
@@ -126,7 +124,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, firebaseUser, loading, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, signup, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,4 +1,6 @@
 
+import type { User as FirebaseUser } from "firebase/auth";
+
 export type Employee = {
   id: string; // This is the Employee ID, e.g., "EMP001"
   name: string;
@@ -51,4 +53,5 @@ export type User = {
     role: 'admin' | 'manager' | 'employee';
     companyId: string | null;
     employeeId: string;
+    firebaseUser: FirebaseUser | null;
 }
