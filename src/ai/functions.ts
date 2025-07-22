@@ -5,7 +5,7 @@
  * standard Firebase Cloud Functions.
  */
 import * as admin from 'firebase-admin';
-import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { onCall, HttpsError } from 'firebase-functions/v2/on-call';
 import { getFirestore } from 'firebase-admin/firestore';
 import { z } from 'zod';
 
@@ -40,6 +40,7 @@ export const createEmployeeAccount = onCall({ cors: true }, async (request) => {
   // 2. Input validation
   const validationResult = createEmployeeSchema.safeParse(request.data);
   if (!validationResult.success) {
+    console.error('Validation failed', validationResult.error.flatten());
     throw new HttpsError('invalid-argument', 'Invalid data provided.', validationResult.error.flatten());
   }
   
@@ -47,11 +48,17 @@ export const createEmployeeAccount = onCall({ cors: true }, async (request) => {
   const adminUid = request.auth.uid;
 
   // 3. Authorization check
-  const adminUserDoc = await db.collection('users').doc(adminUid).get();
-  const adminUserData = adminUserDoc.data();
-  
-  if (!adminUserDoc.exists || adminUserData?.companyId !== companyId || !['admin', 'manager'].includes(adminUserData?.role)) {
-    throw new HttpsError('permission-denied', 'You do not have permission to perform this action.');
+  let adminUserData;
+  try {
+    const adminUserDoc = await db.collection('users').doc(adminUid).get();
+    adminUserData = adminUserDoc.data();
+    
+    if (!adminUserDoc.exists || adminUserData?.companyId !== companyId || !['admin', 'manager'].includes(adminUserData?.role)) {
+      throw new HttpsError('permission-denied', 'You do not have permission to perform this action.');
+    }
+  } catch (error) {
+     console.error("Authorization check failed:", error);
+     throw new HttpsError('internal', 'Could not verify user permissions.');
   }
 
   // 4. Business Logic
@@ -93,7 +100,7 @@ export const createEmployeeAccount = onCall({ cors: true }, async (request) => {
   } catch (error: any) {
       // Cleanup: If user creation succeeded but Firestore failed, delete the user.
       if (newUser) {
-          await admin.auth().deleteUser(newUser.uid).catch(e => console.error("Cleanup failed:", e));
+          await admin.auth().deleteUser(newUser.uid).catch(e => console.error("Failed to clean up orphaned auth user:", e));
       }
 
       console.error('Error creating employee:', error);
@@ -102,6 +109,6 @@ export const createEmployeeAccount = onCall({ cors: true }, async (request) => {
           throw new HttpsError('already-exists', error.message, {code: error.code});
       }
       
-      throw new HttpsError('internal', 'An internal server error occurred.');
+      throw new HttpsError('internal', 'An internal server error occurred while creating the employee.');
   }
 });

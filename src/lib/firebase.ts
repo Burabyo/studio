@@ -1,6 +1,6 @@
 
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { initializeFirestore, memoryLocalCache, persistentLocalCache } from "firebase/firestore";
+import { initializeFirestore, memoryLocalCache } from "firebase/firestore";
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
 import { getAuth } from "firebase/auth";
 
@@ -16,9 +16,9 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-// Initialize Firestore with offline persistence
+// Initialize Firestore with memory cache
 const db = initializeFirestore(app, {
-  localCache: persistentLocalCache(/*settings*/),
+  localCache: memoryLocalCache(/*settings*/),
 });
 
 const auth = getAuth(app);
@@ -27,8 +27,8 @@ const functions = getFunctions(app);
 // Connect to the local Functions emulator if in development
 if (process.env.NODE_ENV === 'development') {
     try {
-        // Note: The Genkit emulator runs on a different port than the standard Functions emulator
         connectFunctionsEmulator(functions, "127.0.0.1", 5001);
+        console.log("Connected to Functions emulator");
     } catch (e) {
         console.warn("Could not connect to functions emulator. Have you started it with 'npm run genkit:watch'?", e);
     }
