@@ -21,10 +21,8 @@ const createEmployeeSchema = z.object({
 
 // Initialize Firebase Admin SDK
 if (admin.apps.length === 0) {
-    // In a deployed environment, you would use service account credentials
-    // For local development or environments where GOOGLE_APPLICATION_CREDENTIALS is set,
-    // initializeApp() can be called without arguments.
-    // Ensure your environment is set up correctly for this to work.
+    // In a deployed environment like App Hosting, the SDK will automatically
+    // find the necessary service account credentials.
     admin.initializeApp();
 }
 const db = getFirestore();
@@ -43,6 +41,7 @@ export async function POST(req: NextRequest) {
     try {
         decodedToken = await admin.auth().verifyIdToken(idToken);
     } catch (error) {
+        console.error("Error verifying ID token:", error);
         return NextResponse.json({ error: 'Unauthorized: Invalid token.' }, { status: 401 });
     }
     const adminUid = decodedToken.uid;
@@ -52,6 +51,7 @@ export async function POST(req: NextRequest) {
     const validationResult = createEmployeeSchema.safeParse(body);
 
     if (!validationResult.success) {
+      console.error("Validation Error:", validationResult.error.flatten());
       return NextResponse.json({ error: 'Invalid input.', details: validationResult.error.flatten() }, { status: 400 });
     }
     
@@ -62,6 +62,7 @@ export async function POST(req: NextRequest) {
     const adminUserData = adminUserDoc.data();
     
     if (!adminUserDoc.exists || adminUserData?.companyId !== companyId || !['admin', 'manager'].includes(adminUserData?.role)) {
+       console.error("Permission denied for user:", adminUid);
       return NextResponse.json({ error: 'Permission denied.' }, { status: 403 });
     }
     
