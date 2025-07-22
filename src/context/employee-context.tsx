@@ -9,7 +9,7 @@ import { db } from '@/lib/firebase';
 
 interface EmployeeContextType {
   employees: Employee[];
-  addEmployee: (employeeData: Omit<Employee, 'userId'> & {email: string, password?: string}) => Promise<void>;
+  addEmployee: (employeeData: Omit<Employee, 'userId' | 'id'> & { id: string, email: string, password?: string}) => Promise<void>;
   editEmployee: (employee: Employee) => Promise<void>;
   deleteEmployee: (id: string) => Promise<void>;
   loading: boolean;
@@ -62,13 +62,18 @@ export const EmployeeProvider = ({ children }: { children: ReactNode }) => {
         throw new Error("Authentication token not found.");
       }
 
+      const payload = {
+          ...employeeData,
+          companyId: user.companyId
+      };
+
       const response = await fetch('/api/create-employee', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ ...employeeData, companyId: user.companyId }),
+        body: JSON.stringify(payload),
       });
 
       const result = await response.json();
@@ -79,6 +84,10 @@ export const EmployeeProvider = ({ children }: { children: ReactNode }) => {
 
     } catch (error: any) {
         console.error("Detailed error adding employee: ", error);
+        // Check if the error is a JSON parsing error, which indicates the API crashed.
+        if (error instanceof SyntaxError) {
+             throw new Error("The server returned an invalid response. Please check the API logs.");
+        }
         throw new Error(error.message || "An unexpected error occurred.");
     }
   };
