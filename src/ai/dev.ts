@@ -3,7 +3,7 @@ import { config } from 'dotenv';
 config();
 
 import * as admin from 'firebase-admin';
-import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore } from 'firebase-admin/firestore';
 import { ai } from './genkit';
 import { z } from 'zod';
@@ -17,13 +17,19 @@ if (admin.apps.length === 0) {
 
 const db = getFirestore();
 
+// THIS IS THE FIX: The schema now correctly includes all fields passed from the frontend.
 const createEmployeeSchema = z.object({
     email: z.string().email(),
     password: z.string().min(6),
     companyId: z.string(),
     id: z.string(),
     name: z.string(),
-    role: z.string(),
+    jobTitle: z.string(),
+    employmentType: z.enum(["Monthly Salary", "Daily Wages"]),
+    salary: z.number(),
+    bankName: z.string(),
+    accountNumber: z.string(),
+    role: z.enum(["employee", "manager"]),
 });
 
 ai.onCall(
@@ -39,7 +45,7 @@ ai.onCall(
     }
     
     // 2. Extract data (already validated by Zod)
-    const { email, password, companyId, id: employeeId, ...employeeData } = request.data;
+    const { email, password, companyId, ...employeeData } = request.data;
     
     // 3. Verify that the caller is an admin or manager of the company
     const adminUid = request.auth.uid;
@@ -64,23 +70,22 @@ ai.onCall(
             uid: newUser.uid,
             name: employeeData.name,
             email: email,
-            role: employeeData.role, // 'employee' or 'manager'
+            role: employeeData.role,
             companyId: companyId,
-            employeeId: employeeId,
+            employeeId: employeeData.id,
         };
         await db.collection('users').doc(newUser.uid).set(userProfile);
 
         // 6. Create the employee document in the company's subcollection
         const employeeRecord = {
             ...employeeData,
-            id: employeeId, // ensure the id is set correctly
             userId: newUser.uid, // Link the employee record to the auth user
             email: email,
         };
         // The password should never be stored in Firestore
         delete (employeeRecord as any).password; 
         
-        const employeeDocRef = db.collection('companies').doc(companyId).collection('employees').doc(employeeId);
+        const employeeDocRef = db.collection('companies').doc(companyId).collection('employees').doc(employeeData.id);
         await employeeDocRef.set(employeeRecord);
 
         return { success: true, userId: newUser.uid };
