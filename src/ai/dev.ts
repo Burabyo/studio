@@ -19,7 +19,7 @@ if (admin.apps.length === 0) {
 
 const db = getFirestore();
 
-// THIS IS THE FIX: The schema now correctly includes all fields passed from the frontend.
+// THIS IS THE FIX: The schema now correctly includes all fields passed from the frontend and coerces salary to a number.
 const createEmployeeSchema = z.object({
     email: z.string().email(),
     password: z.string().min(6),
@@ -28,7 +28,7 @@ const createEmployeeSchema = z.object({
     name: z.string(),
     jobTitle: z.string(),
     employmentType: z.enum(["Monthly Salary", "Daily Wages"]),
-    salary: z.number(),
+    salary: z.coerce.number(),
     bankName: z.string(),
     accountNumber: z.string(),
     role: z.enum(["employee", "manager"]),
