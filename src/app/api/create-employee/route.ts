@@ -25,9 +25,7 @@ if (admin.apps.length === 0) {
     // For local development or environments where GOOGLE_APPLICATION_CREDENTIALS is set,
     // initializeApp() can be called without arguments.
     // Ensure your environment is set up correctly for this to work.
-    admin.initializeApp({
-      credential: admin.credential.applicationDefault(),
-    });
+    admin.initializeApp();
 }
 const db = getFirestore();
 
