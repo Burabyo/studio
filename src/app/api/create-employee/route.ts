@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid input.', details: validationResult.error.flatten() }, { status: 400 });
     }
     
-    const { email, password, companyId, ...employeeData } = validationResult.data;
+    const { email, password, companyId, name, role, id, ...restOfEmployeeData } = validationResult.data;
 
     // 3. Verify Authorization (Caller is an admin/manager of the correct company)
     const adminUserDoc = await db.collection('users').doc(adminUid).get();
@@ -73,28 +73,31 @@ export async function POST(req: NextRequest) {
         newUser = await admin.auth().createUser({
             email: email,
             password: password,
-            displayName: employeeData.name,
+            displayName: name,
         });
 
         // Create the user profile document in the /users collection
         const userProfile = {
             uid: newUser.uid,
-            name: employeeData.name,
+            name: name,
             email: email,
-            role: employeeData.role,
+            role: role,
             companyId: companyId,
-            employeeId: employeeData.id,
+            employeeId: id,
         };
         await db.collection('users').doc(newUser.uid).set(userProfile);
 
         // Create the employee document in the company's subcollection
         const employeeRecord = {
-            ...employeeData,
+            ...restOfEmployeeData,
+            id: id,
+            name: name,
+            role: role,
             userId: newUser.uid,
             email: email,
         };
         
-        const employeeDocRef = db.collection('companies').doc(companyId).collection('employees').doc(employeeData.id);
+        const employeeDocRef = db.collection('companies').doc(companyId).collection('employees').doc(id);
         await employeeDocRef.set(employeeRecord);
 
         return NextResponse.json({ success: true, userId: newUser.uid }, { status: 201 });
