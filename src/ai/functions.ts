@@ -58,6 +58,7 @@ export const createEmployeeAccount = onCall({ cors: true }, async (request) => {
     }
   } catch (error) {
      console.error("Authorization check failed:", error);
+     if (error instanceof HttpsError) throw error;
      throw new HttpsError('internal', 'Could not verify user permissions.');
   }
 
