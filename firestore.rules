@@ -1,0 +1,62 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to fetch user data from /users
+    function getUserData(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data;
+    }
+
+    // Users can read and write their own user document
+    match /users/{userId} {
+      allow read, write: if request.auth.uid == userId;
+    }
+
+    // Company-level rules
+    match /companies/{companyId} {
+      // Allow reading own company document
+      allow read: if request.auth.uid != null 
+                   && getUserData(request.auth.uid).companyId == companyId;
+
+      // Only admin can update the company document
+      allow update: if request.auth.uid != null 
+                     && getUserData(request.auth.uid).companyId == companyId 
+                     && getUserData(request.auth.uid).role == 'admin';
+
+      // --- Employees subcollection ---
+      match /employees/{employeeId} {
+        // Allow read for admins and managers
+        allow read: if request.auth.uid != null 
+                     && getUserData(request.auth.uid).companyId == companyId 
+                     && getUserData(request.auth.uid).role in ['admin', 'manager'];
+
+        // Allow create for admins and managers
+        allow create: if request.auth.uid != null 
+                       && getUserData(request.auth.uid).companyId == companyId 
+                       && getUserData(request.auth.uid).role in ['admin', 'manager'];
+
+        // Allow update for admins and managers
+        allow update: if request.auth.uid != null 
+                       && getUserData(request.auth.uid).companyId == companyId 
+                       && getUserData(request.auth.uid).role in ['admin', 'manager'];
+      }
+
+      // --- Transactions subcollection ---
+      match /transactions/{transactionId} {
+        // Allow read for admins/managers and own transactions for employees
+        allow read: if request.auth.uid != null 
+                     && getUserData(request.auth.uid).companyId == companyId
+                     && (
+                          getUserData(request.auth.uid).role in ['admin', 'manager'] ||
+                          resource.data.employeeId == getUserData(request.auth.uid).employeeId
+                        );
+
+        // Allow write for admins and managers
+        allow write: if request.auth.uid != null 
+                      && getUserData(request.auth.uid).companyId == companyId
+                      && getUserData(request.auth.uid).role in ['admin', 'manager'];
+      }
+    }
+  }
+}
