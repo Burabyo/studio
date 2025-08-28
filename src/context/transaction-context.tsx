@@ -1,99 +1,105 @@
-
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import type { Transaction } from '@/lib/types';
-import { useAuth } from './auth-context';
-import { collection, onSnapshot, addDoc, updateDoc, doc, deleteDoc } from "firebase/firestore";
-import { db } from '@/lib/firebase';
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import {
+  collection,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  where,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  serverTimestamp,
+  Timestamp,
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { useAuth } from "./auth-context";
 
-interface TransactionContextType {
+export type Transaction = {
+  id: string;
+  employeeId: string;
+  type: "advance" | "payment" | "reimbursement" | "deduction";
+  status?: "Pending" | "Approved" | "Rejected";
+  amount: number;
+  notes?: string;
+  createdAt?: Date; 
+  createdByUid?: string | null;
+};
+
+type Ctx = {
   transactions: Transaction[];
-  addTransaction: (transaction: Omit<Transaction, 'id'>) => Promise<void>;
-  editTransaction: (transaction: Transaction) => Promise<void>;
-  deleteTransaction: (id: string) => Promise<void>;
   loading: boolean;
-}
+  error?: string;
+};
 
-const TransactionContext = createContext<TransactionContextType | undefined>(undefined);
+const TransactionContext = createContext<Ctx>({
+  transactions: [],
+  loading: true,
+});
 
-export const TransactionProvider = ({ children }: { children: ReactNode }) => {
-  const { user } = useAuth();
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(true);
+export const TransactionProvider = ({ children }: { children: React.ReactNode }) => {
+  const { role, employee } = useAuth();
+  const [state, setState] = useState<Ctx>({ transactions: [], loading: true });
 
   useEffect(() => {
-    if (!user || !user.companyId) {
-        setTransactions([]);
-        setLoading(false);
-        return;
-    }
+    const base = collection(db, "transactions");
+    const q =
+      role === "employee" && employee?.id
+        ? query(base, where("employeeId", "==", employee.id), orderBy("createdAt", "desc"))
+        : query(base, orderBy("createdAt", "desc"));
 
-    setLoading(true);
-    const transactionsCollectionRef = collection(db, `companies/${user.companyId}/transactions`);
+        const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const list = snap.docs.map((d) => {
+          const data = d.data();
+          return {
+            id: d.id,
+            ...data,
+            // ✅ Convert Firestore Timestamp to JS Date safely
+            createdAt: data.createdAt
+              ? (data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(data.createdAt))
+              : new Date(),
+          } as Transaction;
+        });
+        setState({ transactions: list, loading: false });
+      },
+      (err) => setState((s) => ({ ...s, loading: false, error: err.message }))
+    );
 
-    const unsubscribe = onSnapshot(transactionsCollectionRef, (snapshot) => {
-        const transactionsData = snapshot.docs
-            .map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
-        
-        if (user?.role === 'employee') {
-            setTransactions(transactionsData.filter(t => t.employeeId === user.employeeId));
-        } else {
-            setTransactions(transactionsData);
-        }
-        setLoading(false);
-    }, (error) => {
-        console.error("Error fetching transactions: ", error);
-        setLoading(false);
+    return unsub;
+  }, [role, employee?.id]);
+
+  const value = useMemo(() => state, [state]);
+  return <TransactionContext.Provider value={value}>{children}</TransactionContext.Provider>;
+};
+
+export const useTransactions = () => useContext(TransactionContext);
+
+// Firestore actions for add/edit/delete
+export const useTransactionActions = () => {
+  const { employee } = useAuth();
+
+  const addTransaction = async (tx: Omit<Transaction, "id" | "createdAt">) => {
+    const ref = collection(db, "transactions");
+    await addDoc(ref, {
+      ...tx,
+      createdAt: serverTimestamp(),
+      createdByUid: employee?.id || null,
     });
-
-    return () => unsubscribe();
-  }, [user]);
-
-  const addTransaction = async (transaction: Omit<Transaction, 'id'>) => {
-    if (!user?.companyId) throw new Error("User is not associated with a company.");
-    try {
-        await addDoc(collection(db, `companies/${user.companyId}/transactions`), transaction);
-    } catch (error) {
-        console.error("Error adding transaction: ", error);
-        throw error;
-    }
   };
 
-  const editTransaction = async (updatedTransaction: Transaction) => {
-    if (!user?.companyId) throw new Error("User is not associated with a company.");
-    try {
-        const transactionRef = doc(db, `companies/${user.companyId}/transactions`, updatedTransaction.id);
-        const { id, ...data } = updatedTransaction;
-        await updateDoc(transactionRef, data);
-    } catch (error) {
-        console.error("Error updating transaction: ", error);
-        throw error;
-    }
+  const editTransaction = async (id: string, tx: Partial<Transaction>) => {
+    const ref = doc(db, "transactions", id);
+    await updateDoc(ref, tx);
   };
 
   const deleteTransaction = async (id: string) => {
-    if (!user?.companyId) throw new Error("User is not associated with a company.");
-    try {
-        const transactionRef = doc(db, `companies/${user.companyId}/transactions`, id);
-        await deleteDoc(transactionRef);
-    } catch (error) {
-        console.error("Error deleting transaction: ", error);
-        throw error;
-    }
+    const ref = doc(db, "transactions", id);
+    await deleteDoc(ref);
   };
 
-  return (
-    <TransactionContext.Provider value={{ transactions, addTransaction, editTransaction, deleteTransaction, loading }}>
-      {children}
-    </TransactionContext.Provider>
-  );
-};
-
-export const useTransactionContext = () => {
-  const context = useContext(TransactionContext);
-  if (context === undefined) {
-    throw new Error('useTransactionContext must be used within a TransactionProvider');
-  }
-  return context;
+  return { addTransaction, editTransaction, deleteTransaction };
 };

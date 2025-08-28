@@ -1,229 +1,152 @@
-
 "use client";
 
-import * as React from "react";
-import type { Transaction } from "@/lib/types";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import React, { useState } from "react";
+import { useTransactions, Transaction, useTransactionActions } from "@/context/transaction-context";
+import { useEmployees } from "@/context/employee-context";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Pencil, Trash2, PlusCircle, Loader2 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { TransactionForm } from "./transaction-form";
-import { Badge } from "@/components/ui/badge";
-import { toast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
-import { useEmployeeContext } from "@/context/employee-context";
-import { useTransactionContext } from "@/context/transaction-context";
-import { useCurrency } from "@/context/currency-context";
-import { useAuth } from "@/context/auth-context";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { format } from "date-fns";
+import { v4 as uuidv4 } from "uuid";
 
-const statusColors = {
-  Pending: "bg-yellow-500 hover:bg-yellow-500/80",
-  Approved: "bg-blue-500 hover:bg-blue-500/80",
-  Paid: "bg-green-500 hover:bg-green-500/80",
-  Rejected: "bg-red-500 hover:bg-red-500/80",
-};
+interface TransactionFormValues {
+  id: string;
+  employeeId: string;
+  type: "advance" | "payment" | "reimbursement" | "deduction";
+  amount: number;
+  notes?: string;
+}
 
-export function TransactionTable() {
-  const { employees } = useEmployeeContext();
-  const { transactions, addTransaction, editTransaction, deleteTransaction, loading } = useTransactionContext();
-  const { formatCurrency } = useCurrency();
-  const { user } = useAuth();
-  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
-  const [selectedTransaction, setSelectedTransaction] = React.useState<Transaction | null>(null);
+export const TransactionTable: React.FC = () => {
+  const { transactions, loading } = useTransactions();
+  const { employees } = useEmployees();
+  const { addTransaction, editTransaction, deleteTransaction } = useTransactionActions();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
 
-  const handleAddTransaction = async (transaction: Omit<Transaction, 'id'>) => {
-    await addTransaction(transaction);
-    toast({
-      title: "Transaction Added",
-      description: `The transaction for ${transaction.employeeName} has been recorded.`,
-    });
-    setIsDialogOpen(false);
-  };
-  
-  const handleEditTransaction = async (transaction: Transaction) => {
-    await editTransaction(transaction);
-    toast({
-        title: "Transaction Updated",
-        description: `The transaction for ${transaction.employeeName} has been updated.`,
-    });
-    setIsDialogOpen(false);
-    setSelectedTransaction(null);
-  };
-
-  const handleDeleteTransaction = async (transactionId: string) => {
-    await deleteTransaction(transactionId);
-     toast({
-      title: "Transaction Deleted",
-      description: `Transaction has been removed from the system.`,
-      variant: "destructive"
-    });
-  };
-
-  const openEditDialog = (transaction: Transaction) => {
-    setSelectedTransaction(transaction);
+  const openEditDialog = (tx: Transaction) => {
+    setSelectedTx(tx);
     setIsDialogOpen(true);
   };
 
-  const openNewDialog = () => {
-    setSelectedTransaction(null);
-    setIsDialogOpen(true);
-  }
+  const handleDelete = async (id: string) => {
+    await deleteTransaction(id); // ✅ delete from Firestore
+  };
 
-  const canManage = user?.role === 'admin' || user?.role === 'manager';
+  const handleSubmit = async (values: TransactionFormValues) => {
+    if (selectedTx) {
+      // ✅ update Firestore
+      await editTransaction(selectedTx.id, values);
+    } else {
+      // ✅ add to Firestore
+      const newTx: Omit<Transaction, "id" | "createdAt"> = {
+        employeeId: values.employeeId,
+        type: values.type,
+        amount: values.amount,
+        notes: values.notes,
+        status: "Pending",
+      };
+      await addTransaction(newTx);
+    }
+    setIsDialogOpen(false);
+    setSelectedTx(null);
+  };
 
   return (
-    <>
-    <div className="flex justify-end">
-       {canManage && (
-          <Dialog open={isDialogOpen} onOpenChange={(isOpen) => {
-            setIsDialogOpen(isOpen);
-            if (!isOpen) {
-              setSelectedTransaction(null);
-            }
-          }}>
-            <DialogTrigger asChild>
-              <Button onClick={openNewDialog}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add Transaction
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[625px]">
-              <DialogHeader>
-                <DialogTitle>{selectedTransaction ? 'Edit Transaction' : 'Add New Transaction'}</DialogTitle>
-              </DialogHeader>
-              <TransactionForm 
-                setDialogOpen={setIsDialogOpen}
-                onSubmit={selectedTransaction ? handleEditTransaction : handleAddTransaction}
-                transaction={selectedTransaction}
-                employees={employees}
-              />
-            </DialogContent>
-          </Dialog>
-        )}
-      </div>
-    <Card>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Employee</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Amount</TableHead>
-              {canManage && <TableHead className="text-right">Actions</TableHead>}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-                <TableRow>
-                    <TableCell colSpan={canManage ? 7 : 6} className="h-24 text-center">
-                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
-                    </TableCell>
-                </TableRow>
-            ) : transactions.length === 0 ? (
-                <TableRow>
-                    <TableCell colSpan={canManage ? 7 : 6} className="h-24 text-center">
-                        No transactions found. Add one to get started.
-                    </TableCell>
-                </TableRow>
-            ) : (
-            transactions.map((transaction) => (
-              <TableRow key={transaction.id}>
-                <TableCell>{new Date(transaction.date).toLocaleDateString()}</TableCell>
-                <TableCell className="font-medium">{transaction.employeeName} <span className="text-muted-foreground">({transaction.employeeId})</span></TableCell>
-                <TableCell>
-                  <Badge variant="secondary">{transaction.type}</Badge>
-                </TableCell>
-                <TableCell className="max-w-[250px] truncate">{transaction.description}</TableCell>
-                <TableCell>
-                  <Badge className={cn("text-white", statusColors[transaction.status])}>
-                    {transaction.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  {formatCurrency(transaction.amount)}
-                </TableCell>
-                {canManage && (
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Open menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openEditDialog(transaction)}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        {user?.role === 'admin' && (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Delete
-                              </DropdownMenuItem>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This action cannot be undone. This will permanently delete this transaction record.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteTransaction(transaction.id)}>
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                )}
-              </TableRow>
-            )))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
-    </>
+    <div className="overflow-x-auto">
+      <Button className="mb-4" onClick={() => setIsDialogOpen(true)}>Add Transaction</Button>
+
+      <table className="min-w-full border-collapse border border-gray-200">
+        <thead>
+          <tr className="bg-gray-100 text-left">
+            <th className="px-8 py-4 min-w-[150px]">Employee</th>
+            <th className="px-8 py-4 min-w-[120px]">Type</th>
+            <th className="px-8 py-4 min-w-[100px]">Amount</th>
+            <th className="px-8 py-4 min-w-[200px]">Notes</th>
+            <th className="px-8 py-4 min-w-[160px]">Date</th>
+            <th className="px-8 py-4">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {loading ? (
+            <tr>
+              <td colSpan={6} className="text-center py-6">Loading...</td>
+            </tr>
+          ) : transactions.length === 0 ? (
+            <tr>
+              <td colSpan={6} className="text-center py-6">No transactions found</td>
+            </tr>
+          ) : (
+            transactions.map((tx) => (
+              <tr key={tx.id} className="border-b border-gray-200">
+                <td className="px-8 py-6">{employees.find(e => e.id === tx.employeeId)?.name || "Unknown"}</td>
+                <td className="px-8 py-6">{tx.type}</td>
+                <td className="px-8 py-6">{tx.amount}</td>
+                <td className="px-8 py-6">{tx.notes || "-"}</td>
+                <td className="px-8 py-6">{tx.createdAt ? format(new Date(tx.createdAt), "dd/MM/yyyy") : "-"}</td>
+                <td className="px-8 py-6 space-x-2">
+                  <Button size="sm" variant="outline" onClick={() => openEditDialog(tx)}>Edit</Button>
+                  <Button size="sm" variant="destructive" onClick={() => handleDelete(tx.id)}>Delete</Button>
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+
+      {/* Dialog Form */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{selectedTx ? "Edit Transaction" : "Add Transaction"}</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.currentTarget);
+              handleSubmit({
+                id: selectedTx?.id || uuidv4(),
+                employeeId: formData.get("employeeId") as string,
+                type: formData.get("type") as TransactionFormValues["type"],
+                amount: Number(formData.get("amount")),
+                notes: formData.get("notes") as string,
+              });
+            }}
+            className="space-y-4"
+          >
+            <Select name="employeeId" defaultValue={selectedTx?.employeeId || ""}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select Employee" />
+              </SelectTrigger>
+              <SelectContent>
+                {employees.map((e) => (
+                  <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select name="type" defaultValue={selectedTx?.type || "advance"}>
+              <SelectTrigger>
+                <SelectValue placeholder="Transaction Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="advance">Advance</SelectItem>
+                <SelectItem value="payment">Payment</SelectItem>
+                <SelectItem value="reimbursement">Reimbursement</SelectItem>
+                <SelectItem value="deduction">Deduction</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Input type="number" name="amount" placeholder="Amount" defaultValue={selectedTx?.amount || 0} />
+            <Input name="notes" placeholder="Notes (optional)" defaultValue={selectedTx?.notes || ""} />
+
+            <DialogFooter>
+              <Button type="submit">{selectedTx ? "Update" : "Add"}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
-}
+};

@@ -1,139 +1,95 @@
-
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import {
-  getAuth,
-  onAuthStateChanged,
-  signOut,
-  User as FirebaseUser,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-} from 'firebase/auth';
-import { doc, getDoc, setDoc } from "firebase/firestore"; 
-import { app, db } from '@/lib/firebase';
-import type { User as AppUser } from '@/lib/types';
-import { createNewCompany } from '@/lib/company';
-import { toast } from '@/hooks/use-toast';
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { 
+  onAuthStateChanged, 
+  User, 
+  signOut, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword 
+} from "firebase/auth";
+import { auth, db } from "@/lib/firebase";
+import { collection, doc, limit, onSnapshot, query, setDoc, where } from "firebase/firestore";
+import type { Employee } from "@/lib/types";
 
-interface SignupParams {
-    email: string;
-    password: string;
-    name: string;
-    isAdmin: boolean;
-    companyName?: string;
-}
+type Role = "admin"|"manager" | "employee" | undefined;
 
-interface AuthContextType {
-  user: AppUser | null;
+type Ctx = {
+  user: User | null;
   loading: boolean;
-  login: (email: string, pass: string) => Promise<any>;
-  signup: (params: SignupParams) => Promise<any>;
-  logout: () => void;
-}
+  role: Role;
+  employee: (Employee & { id: string }) | null;
+  logout: () => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
+  signup: (data: { email: string; password: string; name: string; companyName: string; isAdmin?: boolean }) => Promise<User>;
+};
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<Ctx>({
+  user: null,
+  loading: true,
+  role: undefined,
+  employee: null,
+  logout: async () => {},
+  login: async () => { throw new Error("login not implemented"); },
+  signup: async () => { throw new Error("signup not implemented"); },
+});
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<AppUser | null>(null);
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [employee, setEmployee] = useState<(Employee & { id: string }) | null>(null);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
-  const auth = getAuth(app);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-      setLoading(true);
-      if (fbUser) {
-        try {
-          const userDocRef = doc(db, "users", fbUser.uid);
-          const userDoc = await getDoc(userDocRef);
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setLoading(false);
 
-          if (userDoc.exists()) {
-             const userData = userDoc.data();
-             const appUser: AppUser = {
-                uid: fbUser.uid,
-                email: fbUser.email,
-                name: userData.name || fbUser.email || 'User',
-                role: userData.role || 'employee',
-                employeeId: userData.employeeId,
-                companyId: userData.companyId || null,
-                firebaseUser: fbUser,
-             };
-             setUser(appUser);
-          } else {
-             console.warn("User document not found for authenticated user. Signing out.");
-             await signOut(auth);
-             setUser(null);
-          }
-        } catch (error: any) {
-           console.error("Error fetching user profile from Firestore:", error);
-           toast({ variant: "destructive", title: "Auth Error", description: "Could not fetch user profile." });
-           await signOut(auth); 
-           setUser(null);
-        }
+      if (u?.uid) {
+        const q = query(collection(db, "employees"), where("authUid", "==", u.uid), limit(1));
+        const unsubEmp = onSnapshot(q, (snap) => {
+          const doc = snap.docs[0];
+          setEmployee(doc ? ({ id: doc.id, ...(doc.data() as any) }) : null);
+        });
+        return () => unsubEmp();
       } else {
-        setUser(null);
+        setEmployee(null);
       }
-      setLoading(false);
     });
+    return unsub;
+  }, []);
 
-    return () => unsubscribe();
-  }, [auth]);
+  const role = employee?.role as Role;
 
-  const login = async (email: string, pass: string) => {
-    setLoading(true);
-    return signInWithEmailAndPassword(auth, email, pass);
-  };
-  
-  const signup = async ({ email, password, name, isAdmin, companyName }: SignupParams) => {
-    setLoading(true);
-    let userCredential;
-
-    try {
-      if (!isAdmin || !companyName) {
-        throw new Error("This signup form is for company admins only.");
-      }
-      
-      userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const fbUser = userCredential.user;
-
-      const { companyId } = await createNewCompany(companyName);
-      
-      const userProfile: Omit<AppUser, 'firebaseUser'> = {
-        uid: fbUser.uid, name, email, role: 'admin', companyId, employeeId: ''
-      };
-      await setDoc(doc(db, 'users', fbUser.uid), userProfile);
-      setUser({...userProfile, firebaseUser: fbUser});
-
-      return userCredential;
-    } catch (error: any) {
-      if (userCredential) {
-        await userCredential.user.delete().catch(e => console.error("Failed to clean up user on signup error:", e));
-      }
-      console.error("ADMIN SIGNUP FAILED:", error.code, error.message);
-      setLoading(false);
-      throw error;
-    }
+  const login = async (email: string, password: string) => {
+    const cred = await signInWithEmailAndPassword(auth, email, password);
+    return cred.user;
   };
 
-  const logout = () => {
-    signOut(auth).then(() => {
-      router.push('/login');
+  const signup = async ({ email, password, name, companyName, isAdmin }: { 
+    email: string; password: string; name: string; companyName: string; isAdmin?: boolean 
+  }) => {
+    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    const employeeDoc = doc(db, "employees", cred.user.uid);
+    await setDoc(employeeDoc, {
+      name,
+      email,
+      role: isAdmin ? "admin" : "employee",
+      companyName,
+      authUid: cred.user.uid,
+      createdAt: new Date(),
     });
+    return cred.user;
   };
 
-  return (
-    <AuthContext.Provider value={{ user, loading, login, signup, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const logout = async () => {
+    await signOut(auth);
+    setUser(null);
+    setEmployee(null);
+  };
+
+  const value = useMemo(() => ({ user, loading, role, employee, logout, login, signup }), [user, loading, role, employee]);
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+export const useAuth = () => useContext(AuthContext);

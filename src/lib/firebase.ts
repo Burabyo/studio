@@ -1,6 +1,5 @@
-
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { initializeFirestore, memoryLocalCache } from "firebase/firestore";
+import { getFirestore } from "firebase/firestore";
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
 import { getAuth } from "firebase/auth";
 
@@ -13,26 +12,29 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase
+// Initialize Firebase app
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-// Initialize Firestore with memory cache
-const db = initializeFirestore(app, {
-  localCache: memoryLocalCache(/*settings*/),
-});
+// Firestore
+const db = getFirestore(app);
 
+// Auth
 const auth = getAuth(app);
+
+// Functions
 const functions = getFunctions(app);
 
-// Connect to the local Functions emulator if in development
-if (process.env.NODE_ENV === 'development') {
-    try {
-        connectFunctionsEmulator(functions, "127.0.0.1", 5001);
-        console.log("Connected to Functions emulator");
-    } catch (e) {
-        console.warn("Could not connect to functions emulator. Have you started it with 'npm run genkit:watch'?", e);
-    }
+// Connect to local Functions emulator in development
+if (process.env.NODE_ENV === "development") {
+  try {
+    connectFunctionsEmulator(functions, "127.0.0.1", 5001);
+    console.log("Connected to Functions emulator");
+  } catch (e) {
+    console.warn(
+      "Could not connect to Functions emulator. Make sure it is running on localhost:5001",
+      e
+    );
+  }
 }
-
 
 export { app, db, auth, functions };

@@ -1,121 +1,139 @@
-
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import type { Employee } from '@/lib/types';
-import { useAuth } from './auth-context';
-import { collection, onSnapshot, doc, deleteDoc, updateDoc } from "firebase/firestore";
-import { db, functions } from '@/lib/firebase';
-import { httpsCallable } from 'firebase/functions';
+import React, { createContext, useContext, useState, useEffect } from "react";
+import {
+  collection,
+  onSnapshot,
+  orderBy,
+  query,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  serverTimestamp,
+  Timestamp,
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
-interface EmployeeContextType {
-  employees: Employee[];
-  addEmployee: (employeeData: Omit<Employee, 'userId' | 'id'> & { id: string, email: string, password?: string}) => Promise<void>;
-  editEmployee: (employee: Employee) => Promise<void>;
-  deleteEmployee: (id: string) => Promise<void>;
+// Employee type
+export type Employee = {
+  name: string;
+  jobTitle: string;
+  employmentType: string;
+  bankName: string;
+  accountNumber: string;
+  salary: number;
+  role: string;
+  userId: string | null;
+  email: string;
+  createdAt?: Timestamp | null;
+};
+
+// Add `id`
+export type EmployeeWithId = Employee & { id: string };
+
+// State type
+type EmployeeState = {
+  employees: EmployeeWithId[];
+  byId: Record<string, EmployeeWithId>;
   loading: boolean;
-}
+  error?: string;
+};
 
-const EmployeeContext = createContext<EmployeeContextType | undefined>(undefined);
+// Context value type
+type EmployeeContextType = EmployeeState & {
+  addEmployee: (employee: Employee) => Promise<void>;
+  editEmployee: (id: string, data: Partial<Employee>) => Promise<void>;
+  deleteEmployee: (id: string) => Promise<void>;
+};
 
-const createEmployeeAccount = httpsCallable(functions, 'createEmployeeAccount');
+export const EmployeeContext = createContext<EmployeeContextType | undefined>(
+  undefined
+);
 
-export const EmployeeProvider = ({ children }: { children: ReactNode }) => {
-  const { user } = useAuth();
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [loading, setLoading] = useState(true);
-  
+export function EmployeeProvider({ children }: { children: React.ReactNode }) {
+  const [state, setState] = useState<EmployeeState>({
+    employees: [],
+    byId: {},
+    loading: true,
+    error: undefined,
+  });
+
+  // 🔥 Fetch employees in real-time
   useEffect(() => {
-    if (!user || !user.companyId) {
-        setEmployees([]);
-        setLoading(false);
-        return;
-    };
+    const q = query(collection(db, "employees"), orderBy("createdAt", "desc"));
 
-    setLoading(true);
-    const employeesCollectionRef = collection(db, `companies/${user.companyId}/employees`);
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const list: EmployeeWithId[] = snap.docs.map((docSnap) => {
+          const data = docSnap.data() as Partial<Employee>;
+          return {
+            id: docSnap.id,
+            name: data.name || "",
+            jobTitle: data.jobTitle || "",
+            employmentType: data.employmentType || "Monthly Salary",
+            bankName: data.bankName || "",
+            accountNumber: data.accountNumber || "",
+            salary: data.salary || 0,
+            role: data.role || "employee",
+            userId: data.userId || null,
+            email: data.email || "",
+            createdAt: data.createdAt || null,
+          };
+        });
 
-    const unsubscribe = onSnapshot(employeesCollectionRef, (snapshot) => {
-        const employeesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Employee));
-        
-        if (user?.role === 'employee') {
-            setEmployees(employeesData.filter(e => e.id === user.employeeId));
-        } else {
-            setEmployees(employeesData);
-        }
-        setLoading(false);
-    }, (error) => {
-        console.error("Error fetching employees: ", error);
-        setLoading(false);
+        const map = list.reduce((acc, e) => {
+          acc[e.id] = e;
+          return acc;
+        }, {} as Record<string, EmployeeWithId>);
+
+        setState({ employees: list, byId: map, loading: false, error: undefined });
+      },
+      (err) => setState((s) => ({ ...s, loading: false, error: err.message }))
+    );
+
+    return unsub;
+  }, []);
+
+  // ➕ Add Employee
+  const addEmployee = async (employee: Employee) => {
+    await addDoc(collection(db, "employees"), {
+      ...employee,
+      createdAt: serverTimestamp(),
     });
-
-    return () => unsubscribe();
-  }, [user]);
-
-
-  const addEmployee = async (employeeData: Omit<Employee, 'userId'> & {email: string, password?: string}) => {
-    if (!user?.companyId || !['admin', 'manager'].includes(user.role)) {
-      throw new Error("Only admins or managers can create new employees.");
-    }
-    if (!employeeData.password) throw new Error("Password is required for new employee account.");
-    
-    try {
-      const payload = {
-          ...employeeData,
-          companyId: user.companyId
-      };
-
-      const result = await createEmployeeAccount(payload);
-      
-      const data = result.data as { success: boolean, error?: string, userId?: string};
-
-      if (!data.success) {
-        throw new Error(data.error || "Failed to create employee in callable function.");
-      }
-
-    } catch (error: any) {
-        console.error("Detailed error adding employee: ", error);
-        throw new Error(error.message || "An unexpected error occurred calling the function.");
-    }
   };
 
-  const editEmployee = async (updatedEmployee: Employee) => {
-    if (!user?.companyId) throw new Error("User is not associated with a company.");
-    try {
-        const { id, ...data } = updatedEmployee;
-        const employeeRef = doc(db, `companies/${user.companyId}/employees`, id);
-        // Do not allow email/password changes from this form.
-        delete (data as any).email;
-        delete (data as any).password;
-        await updateDoc(employeeRef, data);
-    } catch (error) {
-        console.error("Error updating employee: ", error);
-        throw error;
-    }
+  // ✏️ Edit Employee
+  const editEmployee = async (id: string, data: Partial<Employee>) => {
+    const ref = doc(db, "employees", id);
+    await updateDoc(ref, data);
   };
 
+  // 🗑️ Delete Employee
   const deleteEmployee = async (id: string) => {
-    if (!user?.companyId) throw new Error("User is not associated with a company.");
-    try {
-        const employeeRef = doc(db, `companies/${user.companyId}/employees`, id);
-        await deleteDoc(employeeRef);
-    } catch (error) {
-        console.error("Error deleting employee: ", error);
-        throw error;
-    }
+    await deleteDoc(doc(db, "employees", id));
   };
 
   return (
-    <EmployeeContext.Provider value={{ employees, addEmployee, editEmployee, deleteEmployee, loading }}>
+    <EmployeeContext.Provider
+      value={{
+        ...state,
+        addEmployee,
+        editEmployee,
+        deleteEmployee,
+      }}
+    >
       {children}
     </EmployeeContext.Provider>
   );
-};
+}
 
-export const useEmployeeContext = () => {
+// Custom hook
+export const useEmployees = () => {
   const context = useContext(EmployeeContext);
-  if (context === undefined) {
-    throw new Error('useEmployeeContext must be used within an EmployeeProvider');
+  if (!context) {
+    throw new Error("useEmployees must be used within an EmployeeProvider");
   }
   return context;
 };

@@ -1,98 +1,48 @@
-
 "use client";
 
-import * as React from "react";
-import type { Employee } from "@/lib/types";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Pencil, Trash2, PlusCircle, Loader2 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { EmployeeForm } from "./employee-form";
-import { Badge } from "@/components/ui/badge";
-import { toast } from "@/hooks/use-toast";
-import { useEmployeeContext } from "@/context/employee-context";
+import React, { useState } from "react";
+import { useEmployees } from "@/context/employee-context";
 import { useCurrency } from "@/context/currency-context";
 import { useAuth } from "@/context/auth-context";
+import { EmployeeForm, EmployeeFormValues } from "./employee-form";
+import { Employee } from "@/lib/types";
+import { Card, CardContent } from "@/components/ui/card";
+import { Table, TableHeader, TableRow, TableCell, TableBody } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Loader2, PlusCircle } from "lucide-react";
 
-export function EmployeeTable() {
-  const { employees, addEmployee, editEmployee, deleteEmployee, loading } = useEmployeeContext();
+export const EmployeeTable: React.FC = () => {
+  const { employees, loading, addEmployee, editEmployee, deleteEmployee } = useEmployees();
   const { formatCurrency } = useCurrency();
-  const { user } = useAuth();
-  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
-  const [selectedEmployee, setSelectedEmployee] = React.useState<Employee | null>(null);
+  const { role: userRole } = useAuth();
 
-  const handleAddOrEditEmployee = async (employeeData: Employee) => {
-    try {
-      if (selectedEmployee) { // Editing existing employee
-        await editEmployee(employeeData);
-        toast({
-            title: "Employee Updated",
-            description: `${employeeData.name}'s details have been updated.`,
-        });
-      } else { // Adding new employee
-        await addEmployee(employeeData);
-        toast({
-          title: "Employee Added",
-          description: `${employeeData.name} has been successfully added.`,
-        });
-      }
-      setIsDialogOpen(false);
-      setSelectedEmployee(null);
-    } catch (error: any) {
-       toast({
-        title: "Error",
-        description: error.message || "Could not save employee. Please check the console for details.",
-        variant: "destructive"
-      });
-    }
-  };
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
 
-  const handleDeleteEmployee = async (employeeId: string) => {
-    try {
-      await deleteEmployee(employeeId);
-      toast({
-        title: "Employee Deleted",
-        description: `Employee has been removed from the system.`,
-        variant: "destructive"
-      });
-    } catch (error) {
-       toast({
-        title: "Error",
-        description: "Could not delete employee. Please try again.",
-        variant: "destructive"
-      });
+  const canManage = userRole === "admin" || userRole === "manager";
+  const canDelete = userRole === "admin";
+
+const handleSubmit = async (values: EmployeeFormValues) => {
+  try {
+    if (selectedEmployee) {
+      await editEmployee(selectedEmployee.id, values);
+    } else {
+      await addEmployee(values); // userId can be null or added after Firebase Auth creation
     }
+    setIsDialogOpen(false);
+    setSelectedEmployee(null);
+  } catch (err: any) {
+    alert(err.message || "Error saving employee.");
+  }
+};
+
+
+
+  const openNewDialog = () => {
+    setSelectedEmployee(null);
+    setIsDialogOpen(true);
   };
 
   const openEditDialog = (employee: Employee) => {
@@ -100,134 +50,109 @@ export function EmployeeTable() {
     setIsDialogOpen(true);
   };
 
-  const openNewDialog = () => {
-    setSelectedEmployee(null);
-    setIsDialogOpen(true);
-  }
-  
-  const canManage = user?.role === 'admin' || user?.role === 'manager';
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this employee?")) return;
+    try {
+      await deleteEmployee(id);
+    } catch (err: any) {
+      alert(err.message || "Error deleting employee.");
+    }
+  };
 
   return (
-    <>
-    <div className="flex justify-end mb-4">
-        {canManage && (
-          <Dialog open={isDialogOpen} onOpenChange={(isOpen) => {
-            setIsDialogOpen(isOpen);
-            if (!isOpen) {
-              setSelectedEmployee(null);
-            }
-          }}>
-            <DialogTrigger asChild>
-              <Button onClick={openNewDialog}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add Employee
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[625px]">
-              <DialogHeader>
-                <DialogTitle>{selectedEmployee ? 'Edit Employee' : 'Add New Employee'}</DialogTitle>
-              </DialogHeader>
-              <EmployeeForm 
-                setDialogOpen={setIsDialogOpen}
-                onSubmit={handleAddOrEditEmployee}
-                employee={selectedEmployee}
-              />
-            </DialogContent>
-          </Dialog>
-        )}
-      </div>
     <Card>
       <CardContent>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">Employees</h2>
+          {canManage && (
+            <Dialog open={isDialogOpen} onOpenChange={(open) => !open && setSelectedEmployee(null)}>
+              <DialogTrigger asChild>
+                <Button onClick={openNewDialog} className="flex items-center gap-2">
+                  <PlusCircle className="h-5 w-5" /> Add Employee
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[600px]">
+                <DialogHeader>
+                  <DialogTitle>{selectedEmployee ? "Edit Employee" : "Add New Employee"}</DialogTitle>
+                </DialogHeader>
+                <EmployeeForm
+                  setDialogOpen={setIsDialogOpen}
+                  employee={selectedEmployee}
+                  onSubmit={handleSubmit}
+                />
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
+
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Employee ID</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Job Title</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead className="text-right">Salary/Rate</TableHead>
-              {canManage && <TableHead className="text-right">Actions</TableHead>}
+              <TableCell>Name</TableCell>
+              <TableCell>Employee ID</TableCell>
+              <TableCell>Job Title</TableCell>
+              <TableCell>Role</TableCell>
+              <TableCell>Type</TableCell>
+              <TableCell className="text-right">Salary/Rate</TableCell>
+              {(canManage || canDelete) && <TableCell className="text-right">Actions</TableCell>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
-                <TableRow>
-                    <TableCell colSpan={canManage ? 7 : 6} className="h-24 text-center">
-                       <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
-                    </TableCell>
-                </TableRow>
-            ) : employees.length === 0 ? (
-                <TableRow>
-                    <TableCell colSpan={canManage ? 7 : 6} className="h-24 text-center">
-                        No employees found. Add one to get started.
-                    </TableCell>
-                </TableRow>
-            ) : (
-                employees.map((employee) => (
-              <TableRow key={employee.id}>
-                <TableCell className="font-medium">{employee.id}</TableCell>
-                <TableCell>{employee.name}</TableCell>
-                <TableCell>{employee.jobTitle}</TableCell>
-                <TableCell className="capitalize">{employee.role}</TableCell>
-                <TableCell>
-                  <Badge variant={employee.employmentType === 'Monthly Salary' ? 'secondary' : 'outline'}>
-                    {employee.employmentType}
-                  </Badge>
+              <TableRow>
+                <TableCell colSpan={canManage || canDelete ? 7 : 6} className="text-center py-10">
+                  <Loader2 className="animate-spin h-6 w-6 mx-auto text-muted-foreground" />
                 </TableCell>
-                <TableCell className="text-right">
-                  {employee.employmentType === 'Monthly Salary'
-                    ? formatCurrency(employee.salary)
-                    : `${formatCurrency(employee.salary)}/day`}
-                </TableCell>
-                {canManage && (
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Open menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openEditDialog(employee)}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        {user?.role === 'admin' && (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Delete
-                              </DropdownMenuItem>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This action cannot be undone. This will permanently delete the employee record.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteEmployee(employee.id)}>
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                )}
               </TableRow>
-            )))}
+            ) : employees.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={canManage || canDelete ? 7 : 6} className="text-center py-10">
+                  No employees found.
+                </TableCell>
+              </TableRow>
+            ) : (
+              employees.map((emp) => (
+                <TableRow key={emp.id}>
+                  <TableCell>{emp.name}</TableCell>
+                  <TableCell>{emp.id}</TableCell>
+                  <TableCell>{emp.jobTitle}</TableCell>
+                  <TableCell>
+                    <Badge variant={emp.role === "admin" ? "destructive" : emp.role === "manager" ? "secondary" : "outline"}>
+                      {emp.role}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={emp.employmentType === "Monthly Salary" ? "secondary" : "outline"}>
+                      {emp.employmentType}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {emp.salary != null
+                      ? emp.employmentType === "Monthly Salary"
+                        ? formatCurrency(emp.salary)
+                        : `${formatCurrency(emp.salary)}/day`
+                      : "-"}
+                  </TableCell>
+                  {(canManage || canDelete) && (
+                    <TableCell className="text-right flex justify-end gap-2">
+                      {canManage && (
+                        <Button size="sm" variant="outline" onClick={() => openEditDialog(emp as Employee)}>
+                          Edit
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button size="sm" variant="destructive" onClick={() => handleDelete(emp.id)}>
+                          Delete
+                        </Button>
+                      )}
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </CardContent>
     </Card>
-    </>
   );
-}
+};

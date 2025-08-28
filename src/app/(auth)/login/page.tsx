@@ -90,7 +90,7 @@ export default function LoginPage() {
                         <form onSubmit={handleLogin} className="space-y-6 pt-6">
                             <div className="text-center">
                                 <h2 className="text-2xl font-bold tracking-tight">Login to your account</h2>
-                                <p className="text-muted-foreground">Employees & Admins: Enter your credentials here.</p>
+                                <p className="text-muted-foreground">Employees & Managers: Enter your credentials here.</p>
                             </div>
                             <div className="grid gap-4">
                             <div className="grid gap-2">

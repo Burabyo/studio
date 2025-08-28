@@ -1,4 +1,4 @@
-import { PayslipGenerator } from "./_components/payslip-generator";
+import PayslipGenerator from "./_components/payslip-generator";
 
 export default function PayslipsPage() {
   return (

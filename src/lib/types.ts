@@ -10,8 +10,9 @@ export type Employee = {
   accountNumber: string;
   salary: number;
   role: 'employee' | 'manager';
-  userId: string | null; // Link to Firebase Auth UID
+  userId?: string | null; // Link to Firebase Auth UID
   email: string; // The employee's login email
+  createdAt?: any;
 };
 
 export type Transaction = {
@@ -24,6 +25,7 @@ export type Transaction = {
   description: string;
   status: 'Pending' | 'Approved' | 'Paid' | 'Rejected';
 };
+
 
 export interface Company {
   id: string;
