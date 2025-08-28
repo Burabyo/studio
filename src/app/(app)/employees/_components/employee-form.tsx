@@ -8,10 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-// Firebase
+// Firebase (client SDK)
 import { auth, db } from "@/lib/firebase";
-import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
+
+// NEW: We'll use a secondary Auth instance to prevent auto-login
+import { secondaryAuth } from "@/lib/firebase-secondary";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 
 // --------------------
 // Types
@@ -66,7 +69,7 @@ export function EmployeeForm({ employee, setDialogOpen }: EmployeeFormProps) {
       form.reset({
         ...employee,
         email: employee.email || "",
-        password: "", // don't autofill password
+        password: "", // don’t autofill password
       });
     } else {
       form.reset({
@@ -87,14 +90,14 @@ export function EmployeeForm({ employee, setDialogOpen }: EmployeeFormProps) {
   const handleSubmit = async (values: EmployeeFormValues) => {
     try {
       if (!employee) {
-        // ✅ Create Firebase Auth user
+        // CREATE USER WITHOUT LOGGING OUT ADMIN
         const cred = await createUserWithEmailAndPassword(
-          auth,
+          secondaryAuth, // uses secondary auth instance so current admin stays signed in
           values.email,
-          values.password || "defaultPassword123" // fallback if somehow empty
+          values.password || "defaultPassword123"
         );
 
-        // ✅ Create Firestore employee doc
+        // Save employee record in Firestore
         await setDoc(doc(db, "employees", cred.user.uid), {
           ...values,
           authUid: cred.user.uid,
@@ -103,7 +106,7 @@ export function EmployeeForm({ employee, setDialogOpen }: EmployeeFormProps) {
 
         console.log("Employee account created successfully!");
       } else {
-        // ✅ Update existing employee (Firestore only)
+        // UPDATE EXISTING EMPLOYEE (Firestore only)
         await setDoc(
           doc(db, "employees", employee.id),
           { ...values, updatedAt: new Date() },
@@ -123,7 +126,6 @@ export function EmployeeForm({ employee, setDialogOpen }: EmployeeFormProps) {
     <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
       <Input placeholder="Name" {...form.register("name", { required: true })} />
       <Input placeholder="Job Title" {...form.register("jobTitle")} />
-
       <Select
         onValueChange={(val) => form.setValue("employmentType", val as EmploymentType)}
         defaultValue={form.getValues("employmentType")}
@@ -136,11 +138,9 @@ export function EmployeeForm({ employee, setDialogOpen }: EmployeeFormProps) {
           <SelectItem value="Daily Wages">Daily Wages</SelectItem>
         </SelectContent>
       </Select>
-
       <Input type="number" placeholder="Salary" {...form.register("salary", { valueAsNumber: true })} />
       <Input placeholder="Bank Name" {...form.register("bankName")} />
       <Input placeholder="Account Number" {...form.register("accountNumber")} />
-
       <Select onValueChange={(val) => form.setValue("role", val as Role)} defaultValue={form.getValues("role")}>
         <SelectTrigger>
           <SelectValue placeholder="Role" />
@@ -150,10 +150,8 @@ export function EmployeeForm({ employee, setDialogOpen }: EmployeeFormProps) {
           <SelectItem value="manager">Manager</SelectItem>
         </SelectContent>
       </Select>
-
       <Input type="email" placeholder="Email" {...form.register("email", { required: true })} />
       {!employee && <Input type="password" placeholder="Password" {...form.register("password", { required: true })} />}
-
       <Button type="submit">{employee ? "Update Employee" : "Add Employee"}</Button>
     </form>
   );
