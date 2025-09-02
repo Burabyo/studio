@@ -7,6 +7,7 @@ import { useCompany } from "@/hooks/useCompany";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/context/auth-context";
 
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -15,14 +16,20 @@ export default function PayslipGenerator() {
   const { employees } = useEmployees();
   const { transactions } = useTransactions();
   const { company, loading: companyLoading } = useCompany("IfKZoIghOA84Nk8ikrFM");
+  const { user, role, employee } = useAuth(); // ✅ use employee from auth context
 
-  const [employeeId, setEmployeeId] = React.useState("");
+  const isEmployee = role === "employee";
+  const isManagerOrAdmin = role === "manager" || role === "admin";
+
+  const [employeeId, setEmployeeId] = React.useState(
+    isEmployee ? employee?.id || "" : ""
+  );
   const [month, setMonth] = React.useState(new Date().toISOString().slice(0, 7));
 
-  const selected = React.useMemo(
-    () => employees.find((e) => e.id === employeeId),
-    [employees, employeeId]
-  );
+  const selected = React.useMemo(() => {
+    if (isEmployee) return employee; // ✅ employees see their own profile
+    return employees.find((e) => e.id === employeeId);
+  }, [employees, employeeId, employee, isEmployee]);
 
   const txForMonth = React.useMemo(() => {
     if (!employeeId) return [];
@@ -40,9 +47,9 @@ export default function PayslipGenerator() {
     return acc;
   }, [txForMonth]);
 
-  const gross = selected?.employmentType === "Monthly Salary" ? Number(selected?.salary || 0) : 0;
+  const gross =
+    selected?.employmentType === "Monthly Salary" ? Number(selected?.salary || 0) : 0;
 
-  // NEW: tax & contributions
   const taxRate = company?.flatTaxRate || 0;
   const tax = (gross * taxRate) / 100;
 
@@ -69,24 +76,21 @@ export default function PayslipGenerator() {
     try {
       const doc = new jsPDF();
 
-      // Company info
       doc.setFontSize(16);
       doc.text(company.payslipInfo?.companyName || "Company Name", 14, 20);
-      if (company.payslipInfo?.companyTagline) doc.setFontSize(10).text(company.payslipInfo.companyTagline, 14, 25);
+      if (company.payslipInfo?.companyTagline)
+        doc.setFontSize(10).text(company.payslipInfo.companyTagline, 14, 25);
       if (company.payslipInfo?.companyContact)
         doc.setFontSize(10).text(`Contact: ${company.payslipInfo.companyContact}`, 14, 30);
 
-      // Title
       doc.setFontSize(14);
       doc.text(`Payslip for ${selected.name}`, 14, 40);
 
-      // Employee info
       doc.setFontSize(12);
       doc.text(`Employee ID: ${selected.id}`, 14, 48);
       doc.text(`Month: ${month}`, 14, 54);
       doc.text(`Gross Salary: ${gross.toLocaleString()}`, 14, 60);
 
-      // Transactions + tax + contributions
       autoTable(doc, {
         startY: 68,
         head: [["Description", "Amount"]],
@@ -103,16 +107,12 @@ export default function PayslipGenerator() {
       });
 
       const finalY = (doc as any).lastAutoTable?.finalY || 72;
-
-      // Footer
       doc.setFontSize(10);
       doc.text("This is a computer-generated payslip.", 14, finalY + 10);
 
-      // Save PDF
       const fileName = `Payslip_${selected.name}_${month}.pdf`;
       doc.save(fileName);
 
-      // Optional: print immediately
       const blobUrl = doc.output("bloburl");
       const printWindow = window.open(blobUrl);
       if (printWindow) printWindow.print();
@@ -124,25 +124,38 @@ export default function PayslipGenerator() {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div>
-          <label className="block text-sm font-medium mb-1">Employee</label>
-          <Select onValueChange={setEmployeeId} value={employeeId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select employee" />
-            </SelectTrigger>
-            <SelectContent>
-              {employees.map((e) => (
-                <SelectItem key={e.id} value={e.id}>
-                  {e.name} ({e.id})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {isManagerOrAdmin && (
+          <div>
+            <label className="block text-sm font-medium mb-1">Employee</label>
+            <Select onValueChange={setEmployeeId} value={employeeId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select employee" />
+              </SelectTrigger>
+              <SelectContent>
+                {employees.map((e) => (
+                  <SelectItem key={e.id} value={e.id}>
+                    {e.name} ({e.id})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {isEmployee && (
+          <div>
+            <label className="block text-sm font-medium mb-1">Employee</label>
+            <Input type="text" value={selected?.name || ""} disabled />
+          </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium mb-1">Month</label>
-          <Input type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
+          <Input
+            type="month"
+            value={month}
+            onChange={(e) => setMonth(e.target.value)}
+          />
         </div>
 
         <div className="flex items-end">
