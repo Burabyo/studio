@@ -1,11 +1,10 @@
-
 "use client";
 
 import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from './auth-context';
-import type { Company, RecurringContribution } from '@/lib/types';
+import type { Company,  RecurringContribution } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 
 interface CurrencyContextType {
@@ -22,22 +21,22 @@ interface CurrencyContextType {
 const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined);
 
 export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
-  const { user } = useAuth();
+  const { employee } = useAuth(); // 🔥 changed
   const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user || !user.companyId) {
+    if (!employee || !employee.companyId) { // 🔥 changed
       setCompany(null);
       setLoading(false);
       return;
     }
 
     setLoading(true);
-    const companyRef = doc(db, 'companies', user.companyId);
-    const unsubscribe = onSnapshot(companyRef, (doc) => {
-      if (doc.exists()) {
-        setCompany(doc.data() as Company);
+    const companyRef = doc(db, 'companies', employee.companyId); // 🔥 changed
+    const unsubscribe = onSnapshot(companyRef, (docSnap) => {
+      if (docSnap.exists()) {
+        setCompany(docSnap.data() as Company);
       } else {
         console.error("Company not found!");
         setCompany(null);
@@ -49,11 +48,11 @@ export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, [employee]); // 🔥 changed
 
   const updateCompany = async (data: Partial<Company>) => {
-    if (!user?.companyId) return;
-    const companyRef = doc(db, 'companies', user.companyId);
+    if (!employee?.companyId) return; // 🔥 changed
+    const companyRef = doc(db, 'companies', employee.companyId); // 🔥 changed
     await updateDoc(companyRef, data);
   };
   
@@ -84,8 +83,11 @@ export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
   }, [company]);
   
   const formatCurrency = useCallback((value: number) => {
-     if (!company) return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
-    
+     if (!company?.currency) {
+       // fallback to USD if company currency is not ready
+       return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+     }
+
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: company.currency,

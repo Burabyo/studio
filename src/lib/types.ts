@@ -1,4 +1,3 @@
-
 import type { User as FirebaseUser } from "firebase/auth";
 
 export type Employee = {
@@ -9,9 +8,10 @@ export type Employee = {
   bankName: string;
   accountNumber: string;
   salary: number;
-  role: 'employee' | 'manager';
+  role: 'employee' | 'manager' | 'admin';
   userId?: string | null; // Link to Firebase Auth UID
   email: string; // The employee's login email
+  companyId: string; // 🔥 Added this so you can safely use employee.companyId
   createdAt?: any;
 };
 
@@ -26,7 +26,6 @@ export type Transaction = {
   status: 'Pending' | 'Approved' | 'Paid' | 'Rejected';
 };
 
-
 export interface Company {
   id: string;
   name: string;
@@ -37,23 +36,23 @@ export interface Company {
 }
 
 export interface RecurringContribution {
-  id:string; // Use a unique ID for each contribution
+  id: string; // Use a unique ID for each contribution
   name: string;
   percentage: number;
 }
 
 export interface PayslipInfo {
-    companyName: string;
-    companyTagline: string;
-    companyContact: string;
+  companyName: string;
+  companyTagline: string;
+  companyContact: string;
 }
 
 export type User = {
-    uid: string;
-    email: string | null;
-    name: string | null;
-    role: 'admin' | 'manager' | 'employee';
-    companyId: string | null;
-    employeeId: string;
-    firebaseUser: FirebaseUser | null;
-}
+  uid: string;
+  email: string | null;
+  name: string | null;
+  role: 'admin' | 'manager' | 'employee';
+  companyId: string | null;
+  employeeId: string;
+  firebaseUser: FirebaseUser | null;
+};

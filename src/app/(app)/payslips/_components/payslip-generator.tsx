@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useEmployees } from "@/context/employee-context";
 import { useTransactions } from "@/context/transaction-context";
+import { useCompany } from "@/hooks/useCompany"; // make sure this hook exists
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,9 +14,11 @@ import autoTable from "jspdf-autotable";
 export default function PayslipGenerator() {
   const { employees } = useEmployees();
   const { transactions } = useTransactions();
+  const { company, loading: companyLoading } = useCompany("IfKZoIghOA84Nk8ikrFM");
+ // put actual ID here
 
   const [employeeId, setEmployeeId] = React.useState("");
-  const [month, setMonth] = React.useState<string>(new Date().toISOString().slice(0, 7)); // yyyy-mm
+  const [month, setMonth] = React.useState(new Date().toISOString().slice(0, 7));
 
   const selected = React.useMemo(() => employees.find((e) => e.id === employeeId), [employees, employeeId]);
 
@@ -38,51 +41,73 @@ export default function PayslipGenerator() {
   const gross = selected?.employmentType === "Monthly Salary" ? Number(selected?.salary || 0) : 0;
   const net = gross + totals.reimbursement + totals.payment - totals.advance - totals.deduction;
 
-  // ------------------------------
-  // PDF & Print handler
-  // ------------------------------
+  const canGenerate = !companyLoading && selected && company;
+
   const handleGeneratePDF = () => {
-    if (!selected) return;
+    console.log("Generating PDF...");
+    console.log("Selected employee:", selected);
+    console.log("Company:", company);
 
-    const doc = new jsPDF();
+    if (!selected || !company) {
+      console.warn("Cannot generate PDF: missing data");
+      return;
+    }
 
-    // Title
-    doc.setFontSize(16);
-    doc.text(`Payslip for ${selected.name}`, 14, 20);
+    try {
+      const doc = new jsPDF();
 
-    // Employee info
-    doc.setFontSize(12);
-    doc.text(`Employee ID: ${selected.id}`, 14, 30);
-    doc.text(`Month: ${month}`, 14, 36);
-    doc.text(`Gross Salary: ${gross.toLocaleString()}`, 14, 42);
-    doc.text(`Net Pay: ${net.toLocaleString()}`, 14, 48);
+      // Company info
+      doc.setFontSize(16);
+      doc.text(company.payslipInfo?.companyName || "Company Name", 14, 20);
+      if (company.payslipInfo?.companyTagline) doc.setFontSize(10).text(company.payslipInfo.companyTagline, 14, 25);
+      if (company.payslipInfo?.companyContact) doc.setFontSize(10).text(`Contact: ${company.payslipInfo.companyContact}`, 14, 30);
 
-    // Transactions table
-    autoTable(doc, {
-      startY: 55,
-      head: [["Date", "Type", "Amount", "Notes"]],
-      body: txForMonth.map((t) => [
-        t.createdAt ? new Date(t.createdAt).toLocaleDateString() : "-",
-        t.type,
-        t.amount.toLocaleString(),
-        t.notes || "-",
-      ]),
-    });
+      // Title
+      doc.setFontSize(14);
+      doc.text(`Payslip for ${selected.name}`, 14, 40);
 
-    // Save PDF
-    const fileName = `Payslip_${selected.name}_${month}.pdf`;
-    doc.save(fileName);
+      // Employee info
+      doc.setFontSize(12);
+      doc.text(`Employee ID: ${selected.id}`, 14, 48);
+      doc.text(`Month: ${month}`, 14, 54);
+      doc.text(`Gross Salary: ${gross.toLocaleString()}`, 14, 60);
+      doc.text(`Net Pay: ${net.toLocaleString()}`, 14, 66);
 
-    // Optional: print immediately
-    const blobUrl = doc.output("bloburl");
-    const printWindow = window.open(blobUrl);
-    if (printWindow) printWindow.print();
+      // Transactions table
+      autoTable(doc, {
+        startY: 72,
+        head: [["Date", "Type", "Amount", "Notes"]],
+        body: txForMonth.map((t) => [
+          t.createdAt ? new Date(t.createdAt).toLocaleDateString() : "-",
+          t.type,
+          t.amount.toLocaleString(),
+          t.notes || "-",
+        ]),
+      });
+
+      const finalY = (doc as any).lastAutoTable?.finalY || 72;
+
+      // Footer
+      doc.setFontSize(10);
+      doc.text("This is a computer-generated payslip.", 14, finalY + 10);
+
+      // Save PDF
+      const fileName = `Payslip_${selected.name}_${month}.pdf`;
+      doc.save(fileName);
+
+      // Optional: print immediately
+      const blobUrl = doc.output("bloburl");
+      const printWindow = window.open(blobUrl);
+      if (printWindow) printWindow.print();
+
+    } catch (err) {
+      console.error("PDF generation failed:", err);
+    }
   };
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {/* Employee selection */}
         <div>
           <label className="block text-sm font-medium mb-1">Employee</label>
           <Select onValueChange={setEmployeeId} value={employeeId}>
@@ -99,21 +124,18 @@ export default function PayslipGenerator() {
           </Select>
         </div>
 
-        {/* Month selection */}
         <div>
           <label className="block text-sm font-medium mb-1">Month</label>
           <Input type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
         </div>
 
-        {/* Generate PDF button */}
         <div className="flex items-end">
-          <Button disabled={!employeeId} onClick={handleGeneratePDF}>
+          <Button disabled={!canGenerate} onClick={handleGeneratePDF}>
             Generate & Print PDF
           </Button>
         </div>
       </div>
 
-      {/* Payslip preview */}
       {employeeId && (
         <div className="rounded-lg border p-4">
           <div className="grid grid-cols-2 gap-2">

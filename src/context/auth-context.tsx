@@ -9,10 +9,10 @@ import {
   createUserWithEmailAndPassword 
 } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
-import { collection, doc, limit, onSnapshot, query, setDoc, where } from "firebase/firestore";
+import { collection, doc, limit, onSnapshot, query, setDoc, where, getDocs } from "firebase/firestore";
 import type { Employee } from "@/lib/types";
 
-type Role = "admin"|"manager" | "employee" | undefined;
+type Role = "admin" | "manager" | "employee" | undefined;
 
 type Ctx = {
   user: User | null;
@@ -69,15 +69,44 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     email: string; password: string; name: string; companyName: string; isAdmin?: boolean 
   }) => {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
+
+    let companyId: string;
+
+    if (isAdmin) {
+      // Create a new company document
+      const companyRef = doc(collection(db, "companies"));
+      await setDoc(companyRef, {
+        name: companyName,
+        createdAt: new Date(),
+        ownerUid: cred.user.uid,
+      });
+      companyId = companyRef.id;
+    } else {
+      // Look up existing company by name
+      const q = query(
+        collection(db, "companies"),
+        where("name", "==", companyName),
+        limit(1)
+      );
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        throw new Error("Company not found");
+      }
+      companyId = snap.docs[0].id;
+    }
+
+    // Save employee document with companyId
     const employeeDoc = doc(db, "employees", cred.user.uid);
     await setDoc(employeeDoc, {
       name,
       email,
       role: isAdmin ? "admin" : "employee",
       companyName,
+      companyId, // ✅ added
       authUid: cred.user.uid,
       createdAt: new Date(),
     });
+
     return cred.user;
   };
 
