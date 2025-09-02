@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useEmployees } from "@/context/employee-context";
 import { useTransactions } from "@/context/transaction-context";
-import { useCompany } from "@/hooks/useCompany"; // make sure this hook exists
+import { useCompany } from "@/hooks/useCompany";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -15,12 +15,14 @@ export default function PayslipGenerator() {
   const { employees } = useEmployees();
   const { transactions } = useTransactions();
   const { company, loading: companyLoading } = useCompany("IfKZoIghOA84Nk8ikrFM");
- // put actual ID here
 
   const [employeeId, setEmployeeId] = React.useState("");
   const [month, setMonth] = React.useState(new Date().toISOString().slice(0, 7));
 
-  const selected = React.useMemo(() => employees.find((e) => e.id === employeeId), [employees, employeeId]);
+  const selected = React.useMemo(
+    () => employees.find((e) => e.id === employeeId),
+    [employees, employeeId]
+  );
 
   const txForMonth = React.useMemo(() => {
     if (!employeeId) return [];
@@ -39,19 +41,30 @@ export default function PayslipGenerator() {
   }, [txForMonth]);
 
   const gross = selected?.employmentType === "Monthly Salary" ? Number(selected?.salary || 0) : 0;
-  const net = gross + totals.reimbursement + totals.payment - totals.advance - totals.deduction;
+
+  // NEW: tax & contributions
+  const taxRate = company?.flatTaxRate || 0;
+  const tax = (gross * taxRate) / 100;
+
+  const contributions = (company?.recurringContributions || []).map((c: any) => ({
+    name: c.name,
+    amount: (gross * (c.percentage || 0)) / 100,
+  }));
+  const contributionsTotal = contributions.reduce((sum, c) => sum + c.amount, 0);
+
+  const net =
+    gross +
+    totals.reimbursement +
+    totals.payment -
+    totals.advance -
+    totals.deduction -
+    tax -
+    contributionsTotal;
 
   const canGenerate = !companyLoading && selected && company;
 
   const handleGeneratePDF = () => {
-    console.log("Generating PDF...");
-    console.log("Selected employee:", selected);
-    console.log("Company:", company);
-
-    if (!selected || !company) {
-      console.warn("Cannot generate PDF: missing data");
-      return;
-    }
+    if (!selected || !company) return;
 
     try {
       const doc = new jsPDF();
@@ -60,7 +73,8 @@ export default function PayslipGenerator() {
       doc.setFontSize(16);
       doc.text(company.payslipInfo?.companyName || "Company Name", 14, 20);
       if (company.payslipInfo?.companyTagline) doc.setFontSize(10).text(company.payslipInfo.companyTagline, 14, 25);
-      if (company.payslipInfo?.companyContact) doc.setFontSize(10).text(`Contact: ${company.payslipInfo.companyContact}`, 14, 30);
+      if (company.payslipInfo?.companyContact)
+        doc.setFontSize(10).text(`Contact: ${company.payslipInfo.companyContact}`, 14, 30);
 
       // Title
       doc.setFontSize(14);
@@ -71,18 +85,21 @@ export default function PayslipGenerator() {
       doc.text(`Employee ID: ${selected.id}`, 14, 48);
       doc.text(`Month: ${month}`, 14, 54);
       doc.text(`Gross Salary: ${gross.toLocaleString()}`, 14, 60);
-      doc.text(`Net Pay: ${net.toLocaleString()}`, 14, 66);
 
-      // Transactions table
+      // Transactions + tax + contributions
       autoTable(doc, {
-        startY: 72,
-        head: [["Date", "Type", "Amount", "Notes"]],
-        body: txForMonth.map((t) => [
-          t.createdAt ? new Date(t.createdAt).toLocaleDateString() : "-",
-          t.type,
-          t.amount.toLocaleString(),
-          t.notes || "-",
-        ]),
+        startY: 68,
+        head: [["Description", "Amount"]],
+        body: [
+          ["Gross Salary", gross.toLocaleString()],
+          ["Payments", totals.payment.toLocaleString()],
+          ["Reimbursements", totals.reimbursement.toLocaleString()],
+          ["Advances", `- ${totals.advance.toLocaleString()}`],
+          ["Deductions", `- ${totals.deduction.toLocaleString()}`],
+          ["Flat Tax (" + taxRate + "%)", `- ${tax.toLocaleString()}`],
+          ...contributions.map((c) => [c.name, `- ${c.amount.toLocaleString()}`]),
+          ["Net Pay", net.toLocaleString()],
+        ],
       });
 
       const finalY = (doc as any).lastAutoTable?.finalY || 72;
@@ -99,7 +116,6 @@ export default function PayslipGenerator() {
       const blobUrl = doc.output("bloburl");
       const printWindow = window.open(blobUrl);
       if (printWindow) printWindow.print();
-
     } catch (err) {
       console.error("PDF generation failed:", err);
     }
@@ -149,6 +165,14 @@ export default function PayslipGenerator() {
             <div className="text-right">- {totals.advance.toLocaleString()}</div>
             <div>Deductions</div>
             <div className="text-right">- {totals.deduction.toLocaleString()}</div>
+            <div>Flat Tax ({taxRate}%)</div>
+            <div className="text-right">- {tax.toLocaleString()}</div>
+            {contributions.map((c) => (
+              <React.Fragment key={c.name}>
+                <div>{c.name}</div>
+                <div className="text-right">- {c.amount.toLocaleString()}</div>
+              </React.Fragment>
+            ))}
             <div className="font-semibold">Net Pay</div>
             <div className="text-right font-semibold">{net.toLocaleString()}</div>
           </div>

@@ -56,26 +56,27 @@ export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
     await updateDoc(companyRef, data);
   };
   
-  const addContribution = (contribution: Omit<RecurringContribution, 'id'>) => {
-    if (!company) return;
-    const newContribution = { ...contribution, id: uuidv4() };
-    const updatedContributions = [...company.recurringContributions, newContribution];
-    updateCompany({ recurringContributions: updatedContributions });
-  };
+ const addContribution = (contribution: Omit<RecurringContribution, 'id'>) => {
+  if (!company) return;
+  const newContribution: RecurringContribution = { ...contribution, id: uuidv4() };
+  const updatedContributions = [...(company.recurringContributions ?? []), newContribution];
+  updateCompany({ recurringContributions: updatedContributions });
+};
 
-  const editContribution = (id: string, contribution: Partial<RecurringContribution>) => {
-    if (!company) return;
-    const updatedContributions = company.recurringContributions.map(c => 
-      c.id === id ? { ...c, ...contribution } : c
-    );
-    updateCompany({ recurringContributions: updatedContributions });
-  };
+const editContribution = (id: string, contribution: Partial<RecurringContribution>) => {
+  if (!company) return;
+  const updatedContributions = (company.recurringContributions ?? []).map(c =>
+    c.id === id ? { ...c, ...contribution } : c
+  );
+  updateCompany({ recurringContributions: updatedContributions });
+};
 
-  const deleteContribution = (id: string) => {
-    if (!company) return;
-    const updatedContributions = company.recurringContributions.filter((c) => c.id !== id);
-    updateCompany({ recurringContributions: updatedContributions });
-  };
+const deleteContribution = (id: string) => {
+  if (!company) return;
+  const updatedContributions = (company.recurringContributions ?? []).filter(c => c.id !== id);
+  updateCompany({ recurringContributions: updatedContributions });
+};
+
 
   const getCurrencySymbol = useCallback(() => {
     if (!company) return '$';

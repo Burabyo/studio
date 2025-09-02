@@ -241,108 +241,115 @@ export default function SettingsPage() {
       </Card>
 
       {/* Financial Settings */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Financial Settings</CardTitle>
-          <CardDescription>Set tax rates and manage recurring employee contributions.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="tax-rate">Flat Tax Rate (%)</Label>
-            <Input
-              id="tax-rate"
-              type="number"
-              value={company.taxRate || 0}
-              onChange={(e) => handleFieldChange("taxRate", parseFloat(e.target.value) || 0)}
-              className="max-w-xs"
-              placeholder="e.g., 20"
+     {/* Financial Settings */}
+<Card>
+  <CardHeader>
+    <CardTitle>Financial Settings</CardTitle>
+    <CardDescription>Set tax rates and manage recurring employee contributions.</CardDescription>
+  </CardHeader>
+  <CardContent className="space-y-6">
+    <div className="space-y-2">
+      <Label htmlFor="flat-tax-rate">Flat Tax Rate (%)</Label>
+      <Input
+        id="flat-tax-rate"
+        type="number"
+        value={company.flatTaxRate || 0}
+        onChange={(e) => handleFieldChange("flatTaxRate", parseFloat(e.target.value) || 0)}
+        className="max-w-xs"
+        placeholder="e.g., 20"
+      />
+    </div>
+
+    <div className="space-y-2">
+      <div className="flex justify-between items-center">
+        <Label>Recurring Contributions</Label>
+        <Dialog
+          open={isDialogOpen}
+          onOpenChange={(isOpen) => {
+            setIsDialogOpen(isOpen);
+            if (!isOpen) setSelectedContribution(null);
+          }}
+        >
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm" onClick={openNewDialog}>
+              <PlusCircle className="mr-2 h-4 w-4" /> Add New
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>{selectedContribution ? "Edit Contribution" : "Add New Contribution"}</DialogTitle>
+            </DialogHeader>
+            <ContributionForm
+              setDialogOpen={setIsDialogOpen}
+              onSubmit={selectedContribution ? handleEditContribution : handleAddContribution}
+              contribution={selectedContribution || null}
             />
-          </div>
+          </DialogContent>
+        </Dialog>
+      </div>
 
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <Label>Recurring Contributions</Label>
-              <Dialog
-                open={isDialogOpen}
-                onOpenChange={(isOpen) => {
-                  setIsDialogOpen(isOpen);
-                  if (!isOpen) setSelectedContribution(null);
-                }}
-              >
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" onClick={openNewDialog}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Add New
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
-                  <DialogHeader>
-                    <DialogTitle>{selectedContribution ? "Edit Contribution" : "Add New Contribution"}</DialogTitle>
-                  </DialogHeader>
-                  <ContributionForm
-                    setDialogOpen={setIsDialogOpen}
-                    onSubmit={selectedContribution ? handleEditContribution : handleAddContribution}
-                    contribution={selectedContribution || null}
-                  />
-                </DialogContent>
-              </Dialog>
-            </div>
+      <div className="border rounded-md">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Percentage</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {recurringContributions.map((c) => (
+              <TableRow key={c.id}>
+                <TableCell className="font-medium">{c.name}</TableCell>
+                <TableCell>{c.percentage}%</TableCell>
+                <TableCell className="text-right">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="h-8 w-8 p-0">
+                        <span className="sr-only">Open menu</span>
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => openEditDialog(c)}>
+                        <Pencil className="mr-2 h-4 w-4" /> Edit
+                      </DropdownMenuItem>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <DropdownMenuItem
+                            onSelect={(e) => e.preventDefault()}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                          </DropdownMenuItem>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action cannot be undone. This will permanently delete this contribution.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDeleteContribution(c.id)}>
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  </CardContent>
+</Card>
 
-            <div className="border rounded-md">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Percentage</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {recurringContributions.map((c) => (
-                    <TableRow key={c.id}>
-                      <TableCell className="font-medium">{c.name}</TableCell>
-                      <TableCell>{c.percentage}%</TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <span className="sr-only">Open menu</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openEditDialog(c)}>
-                              <Pencil className="mr-2 h-4 w-4" /> Edit
-                            </DropdownMenuItem>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
-                                  <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                </DropdownMenuItem>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    This action cannot be undone. This will permanently delete this contribution.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleDeleteContribution(c.id)}>Delete</AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

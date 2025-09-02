@@ -31,7 +31,8 @@ export interface Company {
   name: string;
   currency: 'USD' | 'RWF';
   taxRate: number;
-  recurringContributions: RecurringContribution[];
+  flatTaxRate?: number; // New: flat tax rate percentage
+  recurringContributions?: RecurringContribution[];
   payslipInfo: PayslipInfo;
 }
 
