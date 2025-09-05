@@ -1,5 +1,18 @@
-// ...existing imports and setup remain unchanged
+// index.js
+const admin = require("firebase-admin");
+const cors = require("cors")({ origin: true });
 
+// Initialize Firebase admin if not already
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
+
+const db = admin.firestore();
+
+// ✅ Import onRequest from v2
+const { onRequest } = require("firebase-functions/v2/https");
+
+// Export the function using onRequest
 exports.createEmployeeAccount = onRequest((req, res) => {
   cors(req, res, async () => {
     if (req.method !== "POST") {
@@ -17,10 +30,9 @@ exports.createEmployeeAccount = onRequest((req, res) => {
       salary,
       bankName,
       bankAccountNumber,
-      companyId, // ✅ NEW: accept companyId from frontend
+      companyId,
     } = req.body;
 
-    // Validate required fields including companyId
     const requiredFields = {
       fullName,
       employeeId,
@@ -30,10 +42,9 @@ exports.createEmployeeAccount = onRequest((req, res) => {
       salary,
       bankName,
       bankAccountNumber,
-      companyId, // ✅ NEW: required
+      companyId,
     };
 
-    // Only require email and password for new employees
     const isNewEmployee = !req.body.existing;
     if (isNewEmployee) {
       requiredFields.email = email;
@@ -41,15 +52,13 @@ exports.createEmployeeAccount = onRequest((req, res) => {
     }
 
     for (const [key, value] of Object.entries(requiredFields)) {
-      if (value === undefined || value === null || value === "") {
+      if (!value) {
         return res.status(400).send({ error: `${key} is required` });
       }
     }
 
     try {
       if (isNewEmployee) {
-        // ...duplicate checks remain unchanged
-
         await admin.auth().createUser({
           email,
           password,
@@ -57,7 +66,6 @@ exports.createEmployeeAccount = onRequest((req, res) => {
         });
       }
 
-      // Create or update employee document in Firestore
       await db.collection("employees").doc(employeeId).set(
         {
           fullName,
@@ -70,7 +78,7 @@ exports.createEmployeeAccount = onRequest((req, res) => {
           salary,
           bankName,
           bankAccountNumber,
-          companyId, // ✅ NEW: store companyId in employee doc
+          companyId,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
         },

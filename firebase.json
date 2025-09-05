@@ -5,7 +5,7 @@
   "functions": [
     {
       "source": "functions_v2api",
-      "codebase":  "v2api",
+      "codebase": "v2api",
       "ignore": [
         "node_modules",
         ".git",
@@ -17,7 +17,7 @@
     }
   ],
   "hosting": {
-    "public": "public",
+    "public": "out",
     "ignore": [
       "firebase.json",
       "**/.*",
