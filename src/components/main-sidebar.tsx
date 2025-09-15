@@ -82,7 +82,7 @@ export function MainSidebar() {
           </SidebarMenuItem>
 
           <SidebarMenuItem>
-            <SidebarMenuButton tooltip="Logout" onClick={handleLogout} variant="outline" className="border-sidebar-border">
+            <SidebarMenuButton  tooltip="Logout" onClick={handleLogout} variant="outline" className="border-sidebar-border, bg-blue-600 text-white hover:bg-blue-700">
               <LogOut />
               <span>Logout</span>
             </SidebarMenuButton>

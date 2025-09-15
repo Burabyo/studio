@@ -1,7 +1,7 @@
 import type { User as FirebaseUser } from "firebase/auth";
 
 export type Employee = {
-  id: string; // This is the Employee ID, e.g., "EMP001"
+  id: string; // Employee ID, e.g., "EMP001"
   name: string;
   jobTitle: string;
   employmentType: "Monthly Salary" | "Daily Wages";
@@ -26,6 +26,7 @@ export type Transaction = {
   status: 'Pending' | 'Approved' | 'Paid' | 'Rejected';
 };
 
+
 export interface Company {
   id: string;
   name: string;
@@ -37,7 +38,7 @@ export interface Company {
 }
 
 export interface RecurringContribution {
-  id: string; // Use a unique ID for each contribution
+  id: string; // Unique ID for each contribution
   name: string;
   percentage: number;
 }

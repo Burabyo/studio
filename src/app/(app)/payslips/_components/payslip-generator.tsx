@@ -2,21 +2,21 @@
 
 import * as React from "react";
 import { useEmployees } from "@/context/employee-context";
-import { useTransactions } from "@/context/transaction-context";
+import { useTransactions, Transaction } from "@/context/transaction-context";
 import { useCompany } from "@/hooks/useCompany";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/auth-context";
+import { useCurrency } from "@/context/currency-context";
 
 import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 
 export default function PayslipGenerator() {
   const { employees } = useEmployees();
   const { transactions } = useTransactions();
-  const { company, loading: companyLoading } = useCompany("IfKZoIghOA84Nk8ikrFM");
-  const { user, role, employee } = useAuth(); // ✅ use employee from auth context
+  const { company, loading: companyLoading } = useCurrency();
+  const { user, role, employee } = useAuth();
 
   const isEmployee = role === "employee";
   const isManagerOrAdmin = role === "manager" || role === "admin";
@@ -27,29 +27,28 @@ export default function PayslipGenerator() {
   const [month, setMonth] = React.useState(new Date().toISOString().slice(0, 7));
 
   const selected = React.useMemo(() => {
-    if (isEmployee) return employee; // ✅ employees see their own profile
+    if (isEmployee) return employee;
     return employees.find((e) => e.id === employeeId);
   }, [employees, employeeId, employee, isEmployee]);
 
   const txForMonth = React.useMemo(() => {
     if (!employeeId) return [];
     const [y, m] = month.split("-").map((n) => parseInt(n, 10));
-    return transactions.filter((t) => {
+    return transactions.filter((t: Transaction) => {
       if (t.employeeId !== employeeId) return false;
-      const d = t.createdAt ? new Date(t.createdAt) : new Date();
+      if (t.status !== "Approved") return false;
+      const d = t.date ? new Date(t.date) : new Date();
       return d.getFullYear() === y && d.getMonth() + 1 === m;
     });
   }, [transactions, employeeId, month]);
 
   const totals = React.useMemo(() => {
-    const acc = { payment: 0, advance: 0, reimbursement: 0, deduction: 0 };
+    const acc = { Advance: 0, Loan: 0, Bonus: 0, Deduction: 0 };
     for (const t of txForMonth) acc[t.type] += Number(t.amount || 0);
     return acc;
   }, [txForMonth]);
 
-  const gross =
-    selected?.employmentType === "Monthly Salary" ? Number(selected?.salary || 0) : 0;
-
+  const gross = selected?.employmentType === "Monthly Salary" ? Number(selected?.salary || 0) : 0;
   const taxRate = company?.flatTaxRate || 0;
   const tax = (gross * taxRate) / 100;
 
@@ -59,63 +58,79 @@ export default function PayslipGenerator() {
   }));
   const contributionsTotal = contributions.reduce((sum, c) => sum + c.amount, 0);
 
-  const net =
-    gross +
-    totals.reimbursement +
-    totals.payment -
-    totals.advance -
-    totals.deduction -
-    tax -
-    contributionsTotal;
+  const net = gross + totals.Bonus - totals.Advance - totals.Loan - totals.Deduction - tax - contributionsTotal;
 
-  const canGenerate = !companyLoading && selected && company;
+  const canGenerate = !!selected && !companyLoading;
 
   const handleGeneratePDF = () => {
-    if (!selected || !company) return;
+    if (!selected) return;
 
     try {
       const doc = new jsPDF();
 
+      // Company Header
       doc.setFontSize(16);
-      doc.text(company.payslipInfo?.companyName || "Company Name", 14, 20);
-      if (company.payslipInfo?.companyTagline)
-        doc.setFontSize(10).text(company.payslipInfo.companyTagline, 14, 25);
-      if (company.payslipInfo?.companyContact)
-        doc.setFontSize(10).text(`Contact: ${company.payslipInfo.companyContact}`, 14, 30);
-
-      doc.setFontSize(14);
-      doc.text(`Payslip for ${selected.name}`, 14, 40);
-
-      doc.setFontSize(12);
-      doc.text(`Employee ID: ${selected.id}`, 14, 48);
-      doc.text(`Month: ${month}`, 14, 54);
-      doc.text(`Gross Salary: ${gross.toLocaleString()}`, 14, 60);
-
-      autoTable(doc, {
-        startY: 68,
-        head: [["Description", "Amount"]],
-        body: [
-          ["Gross Salary", gross.toLocaleString()],
-          ["Payments", totals.payment.toLocaleString()],
-          ["Reimbursements", totals.reimbursement.toLocaleString()],
-          ["Advances", `- ${totals.advance.toLocaleString()}`],
-          ["Deductions", `- ${totals.deduction.toLocaleString()}`],
-          ["Flat Tax (" + taxRate + "%)", `- ${tax.toLocaleString()}`],
-          ...contributions.map((c) => [c.name, `- ${c.amount.toLocaleString()}`]),
-          ["Net Pay", net.toLocaleString()],
-        ],
-      });
-
-      const finalY = (doc as any).lastAutoTable?.finalY || 72;
+      doc.setFont("helvetica", "bold");
+      doc.text(company?.payslipInfo?.companyName || "Company Name", 105, 20, { align: "center" });
       doc.setFontSize(10);
-      doc.text("This is a computer-generated payslip.", 14, finalY + 10);
+      doc.setFont("helvetica", "normal");
+      if (company?.payslipInfo?.companyTagline)
+        doc.text(company.payslipInfo.companyTagline, 105, 26, { align: "center" });
+      if (company?.payslipInfo?.companyContact)
+        doc.text(`Contact: ${company.payslipInfo.companyContact}`, 105, 32, { align: "center" });
 
+      // Horizontal line
+      doc.setLineWidth(0.5);
+      doc.line(14, 36, 196, 36);
+
+      // Employee Info Box
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text("Employee Details", 14, 44);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Name: ${selected.name}`, 14, 50);
+      doc.text(`Employee ID: ${selected.id}`, 14, 56);
+      doc.text(`Month: ${month}`, 105, 50);
+      doc.text(`Gross Salary: ${gross.toLocaleString()}`, 105, 56);
+
+      // Transactions & Contributions Section
+      let yPos = 70;
+      const spacing = 8;
+
+      const addLine = (label: string, amount: number, sign: "+" | "-") => {
+        doc.setFont("helvetica", "normal");
+        doc.text(label, 14, yPos);
+        doc.text(`${sign} ${amount.toLocaleString()}`, 196, yPos, { align: "right" });
+        yPos += spacing;
+      };
+
+      addLine("Bonus", totals.Bonus, "+");
+      addLine("Advance", totals.Advance, "-");
+      addLine("Loan", totals.Loan, "-");
+      addLine("Deduction", totals.Deduction, "-");
+      addLine(`Flat Tax (${taxRate}%)`, tax, "-");
+      contributions.forEach(c => addLine(c.name, c.amount, "-"));
+
+      // Net Pay Box
+      yPos += 5;
+      doc.setLineWidth(0.7);
+      doc.rect(14, yPos, 182, 12);
+      doc.setFont("helvetica", "bold");
+      doc.text("Net Pay", 14, yPos + 8);
+      doc.text(net.toLocaleString(), 196, yPos + 8, { align: "right" });
+
+      // Footer
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(9);
+      doc.text("This is a computer-generated payslip.", 14, yPos + 25);
+
+      // Save & Print
       const fileName = `Payslip_${selected.name}_${month}.pdf`;
       doc.save(fileName);
-
       const blobUrl = doc.output("bloburl");
       const printWindow = window.open(blobUrl);
       if (printWindow) printWindow.print();
+
     } catch (err) {
       console.error("PDF generation failed:", err);
     }
@@ -166,28 +181,28 @@ export default function PayslipGenerator() {
       </div>
 
       {employeeId && (
-        <div className="rounded-lg border p-4">
+        <div className="rounded-lg border p-4 bg-white shadow-md">
           <div className="grid grid-cols-2 gap-2">
-            <div>Gross Salary</div>
+            <div className="font-medium">Gross Salary</div>
             <div className="text-right">{gross.toLocaleString()}</div>
-            <div>Payments</div>
-            <div className="text-right">+ {totals.payment.toLocaleString()}</div>
-            <div>Reimbursements</div>
-            <div className="text-right">+ {totals.reimbursement.toLocaleString()}</div>
-            <div>Advances</div>
-            <div className="text-right">- {totals.advance.toLocaleString()}</div>
-            <div>Deductions</div>
-            <div className="text-right">- {totals.deduction.toLocaleString()}</div>
-            <div>Flat Tax ({taxRate}%)</div>
+            <div className="font-medium text-green-700">Bonus</div>
+            <div className="text-right text-green-700">+ {totals.Bonus.toLocaleString()}</div>
+            <div className="font-medium text-yellow-700">Advance</div>
+            <div className="text-right text-yellow-700">- {totals.Advance.toLocaleString()}</div>
+            <div className="font-medium text-orange-700">Loan</div>
+            <div className="text-right text-orange-700">- {totals.Loan.toLocaleString()}</div>
+            <div className="font-medium text-red-700">Deduction</div>
+            <div className="text-right text-red-700">- {totals.Deduction.toLocaleString()}</div>
+            <div className="font-medium">Flat Tax ({taxRate}%)</div>
             <div className="text-right">- {tax.toLocaleString()}</div>
             {contributions.map((c) => (
               <React.Fragment key={c.name}>
-                <div>{c.name}</div>
+                <div className="font-medium">{c.name}</div>
                 <div className="text-right">- {c.amount.toLocaleString()}</div>
               </React.Fragment>
             ))}
-            <div className="font-semibold">Net Pay</div>
-            <div className="text-right font-semibold">{net.toLocaleString()}</div>
+            <div className="font-bold text-lg">Net Pay</div>
+            <div className="text-right font-bold text-lg">{net.toLocaleString()}</div>
           </div>
         </div>
       )}

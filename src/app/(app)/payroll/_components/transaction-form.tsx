@@ -11,7 +11,9 @@ import { useEmployees, EmployeeWithId } from "@/context/employee-context";
 export type TransactionFormValues = {
   employeeId: string;
   employeeName: string;
-  type: "advance" | "payment" | "reimbursement" | "deduction";
+  type: "Advance" | "Loan" | "Bonus" | "Deduction";
+  status: "Approved" | "Denied" | "Pending";
+  date: string;
   amount: number;
   notes?: string;
 };
@@ -29,7 +31,9 @@ export function TransactionForm({ transaction, onSubmit, setDialogOpen }: Transa
     defaultValues: transaction || {
       employeeId: "",
       employeeName: "",
-      type: "advance",
+      type: "Advance",
+      status: "Pending",
+      date: new Date().toISOString().slice(0, 10),
       amount: 0,
       notes: "",
     },
@@ -53,6 +57,7 @@ export function TransactionForm({ transaction, onSubmit, setDialogOpen }: Transa
       onSubmit={form.handleSubmit(handleSubmit)}
       className="space-y-4 border p-4 bg-white rounded shadow"
     >
+      {/* Employee */}
       <Select
         onValueChange={(val) => form.setValue("employeeId", val)}
         defaultValue={form.getValues("employeeId")}
@@ -69,6 +74,14 @@ export function TransactionForm({ transaction, onSubmit, setDialogOpen }: Transa
         </SelectContent>
       </Select>
 
+      {/* Transaction Date */}
+      <Input
+        type="date"
+        {...form.register("date")}
+        defaultValue={form.getValues("date")}
+      />
+
+      {/* Transaction Type */}
       <Select
         onValueChange={(val) => form.setValue("type", val as TransactionFormValues["type"])}
         defaultValue={form.getValues("type")}
@@ -77,15 +90,41 @@ export function TransactionForm({ transaction, onSubmit, setDialogOpen }: Transa
           <SelectValue placeholder="Transaction Type" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="advance">Advance</SelectItem>
-          <SelectItem value="payment">Payment</SelectItem>
-          <SelectItem value="reimbursement">Reimbursement</SelectItem>
-          <SelectItem value="deduction">Deduction</SelectItem>
+          {/* ✅ Fixed capitalization to match TransactionFormValues type */}
+          <SelectItem value="Advance">Advance Payment</SelectItem>
+          <SelectItem value="Loan">Loan</SelectItem>
+          <SelectItem value="Bonus">Bonus</SelectItem>
+          <SelectItem value="Deduction">Deduction</SelectItem>
         </SelectContent>
       </Select>
 
-      <Input type="number" placeholder="Amount" {...form.register("amount", { valueAsNumber: true })} />
-      <Input placeholder="Notes (optional)" {...form.register("notes")} />
+      {/* Status */}
+      <Select
+        onValueChange={(val) => form.setValue("status", val as TransactionFormValues["status"])}
+        defaultValue={form.getValues("status")}
+      >
+        <SelectTrigger>
+          <SelectValue placeholder="Status" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="Approved">Approved</SelectItem>
+          <SelectItem value="Denied">Denied</SelectItem>
+          <SelectItem value="Pending">Pending</SelectItem>
+        </SelectContent>
+      </Select>
+
+      {/* Amount */}
+      <Input
+        type="number"
+        placeholder="Amount"
+        {...form.register("amount", { valueAsNumber: true })}
+      />
+
+      {/* Notes / Description */}
+      <Input
+        placeholder="Description"
+        {...form.register("notes")}
+      />
 
       <div className="flex justify-end space-x-2">
         <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
