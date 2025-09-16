@@ -4,10 +4,9 @@ import React, { useState } from "react";
 import { useTransactions, Transaction, useTransactionActions } from "@/context/transaction-context";
 import { useEmployees } from "@/context/employee-context";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { TransactionForm, TransactionFormValues } from "./transaction-form";
 import { format } from "date-fns";
-import { v4 as uuidv4 } from "uuid";
 
 export const TransactionTable: React.FC = () => {
   const { transactions, loading } = useTransactions();
@@ -24,42 +23,34 @@ export const TransactionTable: React.FC = () => {
   const handleDelete = async (id: string) => {
     await deleteTransaction(id);
   };
-const handleSubmit = async (values: TransactionFormValues) => {
-  // Find the employee object to get the name
-  const selectedEmployee = employees.find((e) => e.id === values.employeeId);
 
-  if (!selectedEmployee) {
-    console.error("Employee not found");
-    return;
-  }
+  const handleSubmit = async (values: TransactionFormValues) => {
+    const selectedEmployee = employees.find((e) => e.id === values.employeeId);
 
-  const typeMap: Record<string, Transaction["type"]> = {
-  advance: "Advance",
-  loan: "Loan",
-  bonus: "Bonus",
-  deduction: "Deduction",
-};
+    if (!selectedEmployee) {
+      console.error("Employee not found");
+      return;
+    }
 
-const newTx: Omit<Transaction, "id" | "createdAt"> = {
-  employeeId: values.employeeId,
-  employeeName: selectedEmployee?.name || "Unknown",
-  date: values.date || new Date().toISOString(),
-  type: typeMap[values.type], // ✅ ensure capitalization
-  amount: Number(values.amount),
-  description: values.notes || "",
-  status: values.status || "Pending",
-};
+    const newTx: Omit<Transaction, "id" | "createdAt"> = {
+      employeeId: values.employeeId,
+      employeeName: selectedEmployee?.name || "Unknown",
+      date: values.date || new Date().toISOString(),
+      type: values.type, // ✅ directly use from form
+      amount: Number(values.amount),
+      description: values.notes || "",
+      status: values.status || "Pending",
+    };
 
-  if (selectedTx) {
-    await editTransaction(selectedTx.id, newTx);
-  } else {
-    await addTransaction(newTx);
-  }
+    if (selectedTx) {
+      await editTransaction(selectedTx.id, newTx);
+    } else {
+      await addTransaction(newTx);
+    }
 
-  setIsDialogOpen(false);
-  setSelectedTx(null);
-};
-
+    setIsDialogOpen(false);
+    setSelectedTx(null);
+  };
 
   const getStatusClass = (status: string) => {
     switch (status) {

@@ -42,8 +42,7 @@ const TransactionContext = createContext<Ctx>({
   loading: true,
 });
 
-// ✅ Helper function to normalize type
-// ✅ Safe normalization
+// ✅ Helper function to normalize type safely
 const normalizeType = (t?: string): Transaction["type"] => {
   const typeStr = t || "Advance"; // fallback if undefined
   switch (typeStr.toLowerCase()) {
@@ -59,7 +58,6 @@ const normalizeType = (t?: string): Transaction["type"] => {
       return "Advance"; // fallback
   }
 };
-
 
 export const TransactionProvider = ({ children }: { children: React.ReactNode }) => {
   const { role, employee } = useAuth();
@@ -89,7 +87,7 @@ export const TransactionProvider = ({ children }: { children: React.ReactNode })
             type: normalizeType(data.type),
             amount: Number(data.amount || 0),
             description: data.description || "",
-            status: data.status as Transaction["status"] || "Pending",
+            status: (data.status as Transaction["status"]) || "Pending",
             createdAt: data.createdAt
               ? data.createdAt instanceof Timestamp
                 ? data.createdAt.toDate()
@@ -130,8 +128,16 @@ export const useTransactionActions = () => {
 
   const editTransaction = async (id: string, tx: Partial<Transaction>) => {
     const ref = doc(db, "transactions", id);
-    if (tx.type) tx.type = normalizeType(tx.type);
-    await updateDoc(ref, tx);
+
+    // ✅ Strip out undefined values
+    const cleanTx: Record<string, any> = {};
+    for (const [key, value] of Object.entries(tx)) {
+      if (value !== undefined) cleanTx[key] = value;
+    }
+
+    if (cleanTx.type) cleanTx.type = normalizeType(cleanTx.type);
+
+    await updateDoc(ref, cleanTx);
   };
 
   const deleteTransaction = async (id: string) => {

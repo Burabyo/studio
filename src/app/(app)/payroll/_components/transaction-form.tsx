@@ -48,6 +48,7 @@ export function TransactionForm({ transaction, onSubmit, setDialogOpen }: Transa
   const handleSubmit = (values: TransactionFormValues) => {
     const selectedEmployee = employees.find((e) => e.id === values.employeeId);
     if (selectedEmployee) {
+      // ✅ Ensure employeeName is always synced
       onSubmit({ ...values, employeeName: selectedEmployee.name });
     }
   };
@@ -59,8 +60,8 @@ export function TransactionForm({ transaction, onSubmit, setDialogOpen }: Transa
     >
       {/* Employee */}
       <Select
+        value={form.watch("employeeId")}
         onValueChange={(val) => form.setValue("employeeId", val)}
-        defaultValue={form.getValues("employeeId")}
       >
         <SelectTrigger>
           <SelectValue placeholder="Select Employee" />
@@ -83,14 +84,13 @@ export function TransactionForm({ transaction, onSubmit, setDialogOpen }: Transa
 
       {/* Transaction Type */}
       <Select
+        value={form.watch("type")}
         onValueChange={(val) => form.setValue("type", val as TransactionFormValues["type"])}
-        defaultValue={form.getValues("type")}
       >
         <SelectTrigger>
           <SelectValue placeholder="Transaction Type" />
         </SelectTrigger>
         <SelectContent>
-          {/* ✅ Fixed capitalization to match TransactionFormValues type */}
           <SelectItem value="Advance">Advance Payment</SelectItem>
           <SelectItem value="Loan">Loan</SelectItem>
           <SelectItem value="Bonus">Bonus</SelectItem>
@@ -100,8 +100,8 @@ export function TransactionForm({ transaction, onSubmit, setDialogOpen }: Transa
 
       {/* Status */}
       <Select
+        value={form.watch("status")}
         onValueChange={(val) => form.setValue("status", val as TransactionFormValues["status"])}
-        defaultValue={form.getValues("status")}
       >
         <SelectTrigger>
           <SelectValue placeholder="Status" />
